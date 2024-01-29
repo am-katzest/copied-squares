@@ -3,45 +3,51 @@
             [quil.middleware :as m]))
 
 (defrecord xy [x y])
+(defn xy+ [a b] (->xy (+ (:x a) (:x b)) (+ (:y a) (:y b))))
+(defn xy- [a b] (->xy (- (:x a) (:x b)) (- (:y a) (:y b))))
+(defn xy* [a f] (->xy (* (:x a) f) (* (:y a) f)))
+
 (defrecord ball [color position velocity radius])
 
 (def pxsq 25)
 (defn px [x] (* x pxsq))
-(def sizex 100)
+(def sizex 25)
 (def sizey sizex)
 (def size  (->xy sizex sizey))
 (def initial-squares
   (let [row-l (vec (concat (repeat (/ sizex 2) :gray)
                            (repeat (/ sizex 2) :gray)))]
     (vec (repeat sizey row-l))))
+(let [make-pal #(into {} (map (fn [x] [(keyword (str x)) [x %1 %2]]) (range 256)))
+      basic-wall (make-pal 200 70)
+      basic-ball (make-pal 255 200)]
+     (def wall-colors (merge basic-wall
+                             {:gray [0 0 128]
+                              :black [20 20 200]
+                              :white  [0 0 20]}))
+     (def ball-colors (merge basic-ball {:black [0 0 20]
+                                         :white [20 20 200]})))
 
-(def wall-colors {:gray [0 0 128]
-                  :black [20 20 200]
-                  :white  [0 0 20]})
-(def ball-colors {:black [0 0 20]
-                  :white [20 20 200]})
-
-(def delta_t 0.5)
-(def physic_frames_per_refresh 5)
+(def delta_t 0.25)
+(def physic_frames_per_refresh 2)
+(defn rand-position [color vel size]
+  (let [color (if (int? color) (keyword (str color)) color)
+        position (->xy (rand-int sizex) (rand-int sizey))
+        angle (rand (* 2.0 Math/PI))
+        velocity (xy* (->xy (Math/sin angle) (Math/cos angle)) vel)]
+    (->ball color position velocity size)))
 
 (defn setup []
   (q/frame-rate 60)
   (q/color-mode :hsb)
   {:squares initial-squares
-   :balls [(->ball :white (->xy 10 15) (->xy 0.1 0.1) 4)
-           (->ball :black (->xy 12 5) (->xy 0.5 0.6) .5)
-           (->ball :black (->xy 12 3) (->xy 0.6 0.5) .5)
-           (->ball :black (->xy 12 7) (->xy 0.5 0.7) .5)
-           (->ball :black (->xy 10 7) (->xy 0.5 0.71) .5)
-           (->ball :black (->xy 10 5) (->xy 0.63 0.39) .5)
-           (->ball :black (->xy 10 3) (->xy 0.7 0.5) .5)
-           ]})
+   :balls (into [] (for [color [18 77 150 214]
+                         _repetitions (range 3)]
+                     (rand-position color 0.5 0.5)))})
 (defn low [x] (if (pos? x) x (- x)))
 (defn high [x] (if (neg? x) x (- x)))
 
-(defn xy+ [a b] (->xy (+ (:x a) (:x b)) (+ (:y a) (:y b))))
-(defn xy- [a b] (->xy (- (:x a) (:x b)) (- (:y a) (:y b))))
-(defn xy* [a f] (->xy (* (:x a) f) (* (:y a) f)))
+
 
 (defn xydist [a b]
   (let [{:keys [x y]} (xy- a b)]
