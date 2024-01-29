@@ -126,11 +126,9 @@
   (let [ball' (move-ball ball)
 
         squares (:squares state)
-        state' state ;; (update state :changed conj (ball-intersecting ball))
-        ;; _ (println (:changed state'))
         intersecting (->> (ball-intersecting ball')
                           (filter (fn [{:keys [x y]}] (not= (get-in squares [x y]) color))))]
-    (if (empty? intersecting) (update state' :balls conj ball')
+    (if (empty? intersecting) (update state :balls conj ball')
         (let [chosen (apply min-key #(xydist (closest-point % ball) (:position ball)) intersecting)
               {:keys [x y] :as point} (closest-point chosen ball)
               ball'' (case [(int? x) (int? y)]
@@ -139,7 +137,7 @@
                        [true false] (collide-in-past ball' :x x (if (pos? (:x (:velocity ball))) high low)) ; vertical
                        [false true] (collide-in-past ball' :y y (if (pos? (:y (:velocity ball))) high low)) ; horizontal
                        )]
-          (-> state'
+          (-> state
               (update :balls conj ball'')
               (assoc-in [:squares (:x chosen) (:y chosen)] color)
               (update :changed conj chosen)
