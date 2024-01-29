@@ -7,15 +7,16 @@
 
 (def pxsq 25)
 (defn px [x] (* x pxsq))
-(def sizex 20)
+(def sizex 100)
 (def sizey sizex)
 (def size  (->xy sizex sizey))
 (def initial-squares
-  (let [row-l (vec (concat (repeat (/ sizex 2) :black)
-                           (repeat (/ sizex 2) :white)))]
+  (let [row-l (vec (concat (repeat (/ sizex 2) :gray)
+                           (repeat (/ sizex 2) :gray)))]
     (vec (repeat sizey row-l))))
 
-(def wall-colors {:black [20 20 200]
+(def wall-colors {:gray [0 0 128]
+                  :black [20 20 200]
                   :white  [0 0 20]})
 (def ball-colors {:black [0 0 20]
                   :white [20 20 200]})
@@ -106,7 +107,7 @@
                   (append-while condition east (xy+ east element)))
                  condition (xy+ next element) next)))
 
-(defn ball-intersecting [ball squares]
+(defn ball-intersecting [ball]
   (let [{:keys [x y]} (:position ball)
         good? #(and (inside-board? %) (inside? (closest-point % ball) ball))
         init (->xy (Math/floor x) (Math/floor y))]
@@ -119,11 +120,11 @@
   (let [ball' (move-ball ball)
 
         squares (:squares state)
-        intersecting (->> state
-                          :squares
-                          (ball-intersecting ball')
+        state' state ;; (update state :changed conj (ball-intersecting ball))
+        ;; _ (println (:changed state'))
+        intersecting (->> (ball-intersecting ball')
                           (filter (fn [{:keys [x y]}] (not= (get-in squares [x y]) color))))]
-    (if (empty? intersecting) (update state :balls conj ball')
+    (if (empty? intersecting) (update state' :balls conj ball')
         (let [chosen (apply min-key #(xydist (closest-point % ball) (:position ball)) intersecting)
               {:keys [x y] :as point} (closest-point chosen ball)
               ball'' (case [(int? x) (int? y)]
@@ -132,26 +133,32 @@
                        [true false] (collide-in-past ball' :x x (if (pos? (:x (:velocity ball))) high low)) ; vertical
                        [false true] (collide-in-past ball' :y y (if (pos? (:y (:velocity ball))) high low)) ; horizontal
                        )]
-          (println "ball " color " collided with " chosen)
-          (-> state
+          (-> state'
               (update :balls conj ball'')
               (assoc-in [:squares (:x chosen) (:y chosen)] color)
-              ;;TODO add diff
+              (update :changed conj chosen)
               )))))
 
 (defn update-state-once [state]
   (reduce update-state-ball (dissoc state :balls) (:balls state)))
 
 (defn update-state [state]
-  (nth (iterate update-state-once (dissoc state :change)) physic_frames_per_refresh))
+  (-> (iterate update-state-once (assoc state :changed (mapcat ball-intersecting (:balls state))))
+      (nth physic_frames_per_refresh)))
 
+(defn draw-square [x y color]
+  (q/fill (wall-colors color))
+  (q/rect (px x) (px y) pxsq pxsq))
 (defn draw-state [state]
   ;; (q/background 240)
   (q/no-stroke)
-  (doseq [[x row] (map-indexed vector (:squares state))
-          [y color] (map-indexed vector row)]
-    (q/fill (wall-colors color))
-    (q/rect (px x) (px y) pxsq pxsq))
+
+  (if-let [changed (:changed state)]
+    (doseq [{:keys [x y]} changed]
+      (draw-square x y (get-in state [:squares x y])))
+    (doseq [[x row] (map-indexed vector (:squares state))
+            [y color] (map-indexed vector row)]
+      (draw-square x y color)))
   (doseq [{:keys [color position radius]} (:balls state)]
     (let [{:keys [x y]} position
           diam (* 2 (px radius))]
