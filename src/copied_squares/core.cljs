@@ -2,10 +2,14 @@
   (:require [quil.core :as q :include-macros true]
             [quil.middleware :as m]))
 
+(defrecord xy [x y])
+(defrecord ball [color position velocity radius])
+
 (def pxsq 25)
 (defn px [x] (* x pxsq))
 (def sizex 20)
 (def sizey sizex)
+(def size  (->xy sizex sizey))
 (def initial-squares
   (let [row-l (vec (concat (repeat (/ sizex 2) :black)
                            (repeat (/ sizex 2) :white)))]
@@ -16,8 +20,7 @@
 (def delta_t 0.1)
 (def physic_frames_per_refresh 2)
 
-(defrecord xy [x y])
-(defrecord ball [color position velocity radius])
+
 (defn setup []
                                         ; Set frame rate to 30 frames per second.
   (q/frame-rate 60)
@@ -28,8 +31,8 @@
   {:squares initial-squares
    :balls [(->ball :white (->xy 10 5) (->xy 0.5 0.5) .5)
            (->ball :black (->xy 10 15) (->xy 0.5 0.5) .5)]})
-(defn absp [x] (if (pos? x) x (- x)))
-(defn absn [x] (if (neg? x) x (- x)))
+(defn low [x] (if (pos? x) x (- x)))
+(defn high [x] (if (neg? x) x (- x)))
 
 (defn xy+ [a b] (->xy (+ (:x a) (:x b)) (+ (:y a) (:y b))))
 (defn xy* [a f] (->xy (* (:x a) f) (* (:y a) f)))
@@ -37,20 +40,20 @@
 (defn apply-vel [ball]
   (update ball :position xy+ (xy* (:velocity ball) delta_t)))
 
-(defn collide-wallsx [{:keys [position radius] :as ball}]
-  (let [posx (:x position)]
-    (cond (> (+ posx radius) sizex) (update-in ball [:velocity :x] absn)
-          (< (- posx radius) 0) (update-in ball [:velocity :x] absp)
-          :else ball)))
+(defn collide-in-past [ball coord wall side]
+  (let [ball' (update-in ball [:velocity coord] side)]
+    ;; TODO
+    ;; reflect velocity and move it as if it collided in the past
+    ball'))
 
-(defn collide-wallsy [{:keys [position radius] :as ball}]
-  (let [posy (:y position)]
-    (cond (> (+ posy radius) sizey) (update-in ball [:velocity :y] absn)
-          (< (- posy radius) 0) (update-in ball [:velocity :y] absp)
+(defn collide-walls [coord {:keys [position radius] :as ball}]
+  (let [posx (coord position)]
+    (cond (> (+ posx radius) (coord size)) (collide-in-past ball coord nil high)
+          (< (- posx radius) 0) (collide-in-past ball coord nil low)
           :else ball)))
 
 (defn move-ball [ball squares]
-  (let [ball' (-> ball apply-vel collide-wallsx collide-wallsy)]
+  (let [ball' (->> ball apply-vel (collide-walls :x) (collide-walls :y))]
     ball'))
 
 (defn update-state-ball [state ball]
