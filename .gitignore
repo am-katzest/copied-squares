@@ -10,3 +10,6 @@ pom.xml.asc
 figwheel_server.log
 /.clj-kondo/
 /.lsp/
+/out/
+/resources/public/js/
+/.cljs_node_repl/
