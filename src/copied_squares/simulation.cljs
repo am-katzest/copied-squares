@@ -107,7 +107,8 @@
         (append-while-splitting good? init north)
         (append-while-splitting good? (xy+ south init) south))))
 
-
+(def paint-tiles (atom true))
+(def collide-tiles (atom true))
 (defn update-state-ball [state {:keys [color] :as ball}]
   (let [ball' (move-ball ball)
 
@@ -119,22 +120,24 @@
               point  (closest-point chosen ball)
               x (.-x point)
               y (.-y point)
-              _ (print x y)
-              ball'' (case [(int? x) (int? y)]
-                       [true true]  (collide-point ball point) ; corner
-                       [false false] ball'                     ; center (uh oh)
-                       [true false] (collide-in-past ball' :x x (if (pos? (.-x (:velocity ball'))) high low)) ; vertical
-                       [false true] (collide-in-past ball' :y y (if (pos? (.-y (:velocity ball'))) high low)) ; horizontal
-                       )]
-          (loop [state (update state :balls conj ball'')
-                 [first & rest] intersecting]
-            (if first
-              (-> state
-                  (assoc-in [:squares (.-x chosen) (.-y chosen)] color)
-                  (update :changed conj chosen)
-                  (recur rest))
-              state)
-              )))))
+              ball'' (if-not @collide-tiles ball'
+                             (case [(int? x) (int? y)]
+                               [true true]  (collide-point ball point) ; corner
+                               [false false] ball' ; center (uh oh)
+                               [true false] (collide-in-past ball' :x x (if (pos? (.-x (:velocity ball'))) high low)) ; vertical
+                               [false true] (collide-in-past ball' :y y (if (pos? (.-y (:velocity ball'))) high low)) ; horizontal
+                               ))
+              state' (update state :balls conj ball'')]
+          (if-not @paint-tiles state'
+                  (loop [state state'
+                         [first & rest] intersecting]
+                    (if first
+                      (cond-> state
+                        true  (assoc-in [:squares (.-x first) (.-y first)] color)
+                        true  (update :changed conj first)
+                        true  (recur rest))
+                      state)
+                    ))))))
 
 (defn update-state-once [state]
   (reduce update-state-ball (dissoc state :balls) (:balls state)))

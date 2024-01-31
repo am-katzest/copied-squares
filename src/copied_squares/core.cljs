@@ -1,6 +1,7 @@
 (ns copied-squares.core
   (:require [quil.core :as q :include-macros true]
-            [copied-squares.simulation :refer [sizex sizey make-xy xy* ->ball update-simulation]]
+            [copied-squares.simulation :refer [sizex sizey make-xy xy* ->ball update-simulation] :as sim]
+            [reagent.core :as r]
             [reagent.dom :as rdom]
             [quil.middleware :as m]))
 
@@ -128,8 +129,6 @@
       update-simulation
       refresh-statistics))
 
-
-                                        ; this function is called in index.html
 (defn run-sketch []
   (q/defsketch copied-squares
     :host "copied-squares"
@@ -139,12 +138,62 @@
     :draw draw-state
     :middleware [m/fun-mode]))
 
-
+(defn checkbox [[desc thing initial on off]]
+  (let [state (r/atom initial)
+        id (random-uuid)
+        [on off] (if (some? on) [on off] [true false])
+        sync-state #(reset! thing (if @state on off))]
+    (sync-state)
+    (fn [_]
+      [:div.row
+       [:div.form-check.p-1
+        [:input.toggle
+         {:id id
+          :type "checkbox"
+          :checked @state
+          :on-change (fn []
+                       (swap! state not)
+                       (sync-state))}]
+        [:label.form-check-label.pl-2 {:for id} desc]]])))
+(defn radio [[desc thing initial states]]
+  (let [state (r/atom initial)
+        iid (random-uuid)]
+    (fn [_]
+      [:div.row [:div
+                 desc
+                 (let [chosen @state]
+                   (for [[id [desc val]] states]
+                     ^{:key id} [:div.form-check
+                                 [:input.form-check-input
+                                  {:type "radio"
+                                   :name id
+                                   :id (str iid id)
+                                   :value "option1"
+                                   :checked (= id chosen)
+                                   :on-change (fn []
+                                                (reset! state id)
+                                                (reset! thing val))}]
+                                 [:label.form-check-label.pl-2 {:for (str iid id)} desc]]))]])))
+(def dummy (atom nil))
 (defn controls []
-  [:div
-   [:button {:on-click run-sketch} "restart"]])
+  [:div.container.m-3
+   [:div.container.m-2
+    [:div.row [:h4 "setup"]]
+    [:button {:on-click run-sketch} "restart"]]
+   [:div.container.m-2
+    [:div.row [:h4 "simulation"]]
+    [checkbox ["balls collide with tiles" sim/collide-tiles true]]
+    [checkbox ["balls paint tiles" sim/paint-tiles true]]
+    ]
+   [:div.container.m-2
+    [:div.row [:h4 "visibility"]]
+    [checkbox ["mrau" dummy true "on-" "off-"]]
+    [checkbox ["mrau" dummy true "on-" "off-"]]
+    [radio ["mrau" dummy :a {:a ["meow" "mraow"]
+                               :b  ["3" "4"]}]]
+    "todo"]])
 
 
 (defn ^:export start []
-  (run-sketch)
-  (rdom/render [controls] (js/document.getElementById "gui")))
+  (rdom/render [controls] (js/document.getElementById "gui"))
+  (run-sketch))
