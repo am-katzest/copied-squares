@@ -8,9 +8,8 @@
 (def pxsq 25)
 (defn px [x] (* x pxsq))
 
-(def initial-squares
-  (let [row-l (vec (concat (repeat (/ sizex 2) :gray)
-                           (repeat (/ sizex 2) :gray)))]
+(defn initial-squares []
+  (let [row-l (vec (repeat sizex :gray))]
     (vec (repeat sizey row-l))))
 
 (let [make-pal #(into {} (map (fn [x] [(keyword (str x)) [x %1 %2]]) (range 256)))
@@ -38,7 +37,7 @@
   (q/color-mode :hsb)
   {:frame 0
    :color-history []
-   :squares initial-squares
+   :squares (initial-squares)
    :balls (into [] (for [color [18 150 70]
                          angle [(/ Math/PI 4.05)]
                          _repetitions (range 1)]
@@ -60,7 +59,7 @@
   (doseq [xy squares
           :let [x (.-x xy)
                 y (.-y xy)]]
-    (draw-square x y (get-in state [:squares x y]))))
+    (draw-square x y (get-in state [:squares y x]))))
 
 
 (defn paint-over-with-squares [state]
@@ -100,8 +99,8 @@
       (draw-squares state (:changed state)))
     ;; draw every single square again
     (do (reset! redraw-queued? false)
-        (doseq [[x row] (map-indexed vector (:squares state))
-                [y color] (map-indexed vector row)]
+        (doseq [[y row] (map-indexed vector (:squares state))
+                [x color] (map-indexed vector row)]
           (draw-square x y color))))
   (when @draw-balls?
     (doseq [ball (:balls state)]

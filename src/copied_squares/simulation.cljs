@@ -117,7 +117,7 @@
                          [first & rest] intersecting]
                     (if first
                       (-> state
-                          (assoc-in [:squares (.-x first) (.-y first)] color)
+                          (assoc-in [:squares (.-y first) (.-x first)] color)
                           (update :changed conj first)
                           (recur rest))
                       state)))
@@ -137,7 +137,7 @@
 
         squares (:squares state)
         intersecting (->> (ball-intersecting ball')
-                          (filter (fn [xy] (not= (get-in squares [(.-x xy) (.-y xy)]) color))))]
+                          (filter (fn [xy] (not= (get-in squares [(.-y xy) (.-x xy)]) color))))]
     (if (empty? intersecting) (update state :balls conj ball')
         (let [chosen (apply min-key #(xydist (closest-point % ball) (:position ball)) intersecting)
               point  (closest-point chosen ball)
