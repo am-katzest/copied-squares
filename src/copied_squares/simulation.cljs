@@ -8,6 +8,14 @@
 (defn xy+ [a b] (xy. (+ (.-x a) (.-x b)) (+ (.-y a) (.-y b))))
 (defn xy- [a b] (xy. (- (.-x a) (.-x b)) (- (.-y a) (.-y b))))
 (defn xy* [a f] (xy. (* (.-x a) f) (* (.-y a) f)))
+(defn xydist [a b]
+  (let [xy (xy- a b)
+        x (.-x xy)
+        y (.-y xy)]
+    (Math/sqrt (+ (* x x) (* y y)))))
+(defn xydot [a b]
+  (+ (* (.-x a) (.-x b))
+     (* (.-y a) (.-y b))))
 
 (defn update-xy [point axis f]
   (case axis
@@ -25,11 +33,6 @@
 (defn low [x] (if (pos? x) x (- x)))
 (defn high [x] (if (neg? x) x (- x)))
 
-(defn xydist [a b]
-  (let [xy (xy- a b)
-        x (.-x xy)
-        y (.-y xy)]
-    (Math/sqrt (+ (* x x) (* y y)))))
 
 (defn apply-vel [ball]
   (update ball :position xy+ (xy* (:velocity ball) delta_t)))
@@ -39,9 +42,11 @@
     ;; TODO move it as if it collided in the past
     ball'))
 (defn collide-point [ball point]
-  (let [ball' (update-in ball [:velocity] #(xy- (xy. 0 0) %))]
-    ;; TODO  collide properly and move it as if it collided in the past
-    ball'))
+  (if (neg? (xydot (:velocity ball) (- (:position ball) point)))
+    ball                                ; already moving away
+    (let [ball' (update-in ball [:velocity] #(->xy (- (.-y %)) (- (.-x %))))]
+      ;; TODO  collide properly and move it as if it collided in the past
+      ball')))
 
 (defn collide-walls-x [{:keys [position radius] :as ball}]
   (let [pos (.-x position)]
