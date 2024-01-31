@@ -247,7 +247,7 @@
     [radio ["corner collisisions:" dummy :a
             {:a ["reflect (preserves angle)" :todo]
              :b ["fancy math thing" :todo]}]]
-    [int-slider ["movement/collision steps per frame" sim/ball-steps-per-frame 1 [1 20]]]]
+    [int-slider ["steps per frame" sim/ball-steps-per-frame 1 [1 300]]]]
 
    [:div.container.m-2
     [:div.row [:h4 "visibility"]]
