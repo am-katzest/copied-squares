@@ -16,12 +16,12 @@
 (let [make-pal #(into {} (map (fn [x] [(keyword (str x)) [x %1 %2]]) (range 256)))
       basic-wall (make-pal 180 200)
       basic-ball (make-pal 255 150)]
-     (def wall-colors (merge basic-wall
-                             {:gray [0 0 128]
-                              :black [20 20 200]
-                              :white  [0 0 20]}))
-     (def ball-colors (merge basic-ball {:black [0 0 20]
-                                         :white [20 20 200]})))
+  (def wall-colors (merge basic-wall
+                          {:gray [0 0 128]
+                           :black [20 20 200]
+                           :white  [0 0 20]}))
+  (def ball-colors (merge basic-ball {:black [0 0 20]
+                                      :white [20 20 200]})))
 
 
 
@@ -34,7 +34,7 @@
     (->ball color position velocity size)))
 
 (defn setup []
-  (q/frame-rate 60)
+  (q/frame-rate 15)
   (q/color-mode :hsb)
   {:frame 0
    :color-history []
@@ -62,22 +62,46 @@
                 y (.-y xy)]]
     (draw-square x y (get-in state [:squares x y]))))
 
+
+(defn paint-over-with-squares [state]
+  (doseq [ball (:old-balls state)]
+    (draw-squares state (sim/ball-intersecting ball))))
+
+(def paint-over-ball-shadows (atom paint-over-with-squares))
+
+(defn paint-ball [palette {:keys [color position radius]} & {:keys [scale] :or {scale 1}}]
+  (let [xy position
+        diam (* 2 scale (px radius))]
+    (q/fill (palette color))
+    (q/ellipse (px (.-x xy)) (px (.-y xy)) diam diam)))
+
+(defn paint-over-with-balls [state]
+  (doseq [ball (:old-balls state)]
+    (paint-ball wall-colors ball :scale 1.05)))
+
+
+(def redraw-queued? (atom true))
+(def target-frame-rate (atom 15))
+(def current-frame-rate (r/atom 15))
+;; (add-watch target-frame-rate :update (fn [_ _ _ n] (q/frame-rate 30))) ; disallowed by quil
+
 (defn draw-state [state]
-  ;; (q/background 240)
+  (q/frame-rate @target-frame-rate)
+  (reset! current-frame-rate (int (q/current-frame-rate)))
   (q/no-stroke)
 
-  (if-let [changed (:changed state)]
+  (if-not @redraw-queued?
     (do
-      (draw-squares state changed)
-      (draw-squares state (:redraw state)))
-    (doseq [[x row] (map-indexed vector (:squares state))
-            [y color] (map-indexed vector row)]
-      (draw-square x y color)))
-  (doseq [{:keys [color position radius]} (:balls state)]
-    (let [xy position
-          diam (* 2 (px radius))]
-      (q/fill (ball-colors color))
-      (q/ellipse (px (.-x xy)) (px (.-y xy)) diam diam)))
+      ;; just draw what changed
+      (@paint-over-ball-shadows state)
+      (draw-squares state (:changed state)))
+    ;; draw every single square again
+    (do (reset! redraw-queued? false)
+        (doseq [[x row] (map-indexed vector (:squares state))
+                [y color] (map-indexed vector row)]
+          (draw-square x y color))))
+  (doseq [ball (:balls state)]
+    (paint-ball ball-colors ball))
   (redraw-statistics state))
 
 (defn count-colors [state]
@@ -155,6 +179,7 @@
                        (swap! state not)
                        (sync-state))}]
         [:label.form-check-label.pl-2 {:for id} desc]]])))
+
 (defn radio [[desc thing initial states]]
   (let [state (r/atom initial)
         iid (random-uuid)]
@@ -166,7 +191,7 @@
                      ^{:key id} [:div.form-check
                                  [:input.form-check-input
                                   {:type "radio"
-                                   :name id
+                                   :name iid
                                    :id (str iid id)
                                    :value "option1"
                                    :checked (= id chosen)
@@ -174,24 +199,61 @@
                                                 (reset! state id)
                                                 (reset! thing val))}]
                                  [:label.form-check-label.pl-2 {:for (str iid id)} desc]]))]])))
+
+(defn int-slider [[desc target initial [minimum maximum]]]
+  (let [state (r/atom initial)
+        check-bounds #(cond-> %
+                        minimum (max minimum)
+                        maximum (min maximum))
+        maybe-swap! #(when-let [new-state (some-> % check-bounds int)]
+                       (reset! target new-state)
+                       (reset! state new-state))]
+    (fn [_]
+      [:div.row
+       [:div.form-group.form-inline
+        [:label.pr-2 {:for "textInput"} desc]
+        [:input.form-control.px-2
+         {:id "textInput"
+          :type "text"
+          :style {:width "5em" :height "1.5em"} ;; Custom width using inline style
+          :value (str @state)
+          :on-change #(maybe-swap! (-> % .-target .-value (js/parseInt)))}]
+        [:input.form-control-range.mx-2
+         {:type "range"
+          :value @state
+          :min (str minimum)
+          :max (str maximum)
+          :step 1
+          :style {:width "100px"}
+          :on-change #(maybe-swap! (-> % .-target .-value))}]]])))
+
 (def dummy (atom nil))
 (defn controls []
   [:div.container.m-3
    [:div.container.m-2
     [:div.row [:h4 "setup"]]
-    [:button {:on-click run-sketch} "restart"]]
+    [:button.btn.btn-primary {:type "button" :on-click run-sketch} "restart"]]
+
    [:div.container.m-2
     [:div.row [:h4 "simulation"]]
     [checkbox ["balls collide with tiles" sim/collide-tiles? true]]
     [checkbox ["balls paint tiles" sim/paint-tiles? true]]
-    ]
+    [radio ["corner collisisions:" dummy :a
+            {:a ["reflect (preserves angle)" :todo]
+             :b ["fancy math thing" :todo]}]]]
+
    [:div.container.m-2
     [:div.row [:h4 "visibility"]]
-    [checkbox ["mrau" dummy true "on-" "off-"]]
-    [checkbox ["mrau" dummy true "on-" "off-"]]
-    [radio ["mrau" dummy :a {:a ["meow" "mraow"]
-                               :b  ["3" "4"]}]]
-    "todo"]])
+    [radio ["ball paintover mode" paint-over-ball-shadows :b
+            {:a ["overlaping squares" paint-over-with-squares]
+             :b ["just ball" paint-over-with-balls]
+             :c ["don't :3" identity]}]]
+    [:button.btn.btn-secondary {:type "button" :on-click #(reset! redraw-queued? true)} "redraw"]]
+   [:div.container.m-2
+    [:div.row [:h4 "other"]]
+    [int-slider ["frame rate" target-frame-rate 20 [1 60]]]
+    [:div.row "current frame rate: " @current-frame-rate]
+    [:button.btn.btn-secondary {:type "button" :on-click #(reset! redraw-queued? true)} "redraw"]]])
 
 
 (defn ^:export start []

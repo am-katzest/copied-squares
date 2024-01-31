@@ -145,6 +145,6 @@
   (reduce update-state-ball (dissoc state :balls) (:balls state)))
 
 (defn update-simulation [state]
-  (-> (iterate update-state-once (assoc state :changed [] :redraw (mapcat ball-intersecting (:balls state))))
+  (-> (iterate update-state-once (assoc state :changed [] :old-balls (:balls state)))
       (nth physic_frames_per_refresh)
       (update :frame inc)))
