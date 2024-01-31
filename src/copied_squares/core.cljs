@@ -84,10 +84,11 @@
 (def target-frame-rate (atom 15))
 (def current-frame-rate (r/atom 15))
 ;; (add-watch target-frame-rate :update (fn [_ _ _ n] (q/frame-rate 30))) ; disallowed by quil
-
+(def every-second (atom true))
 (defn draw-state [state]
   (q/frame-rate @target-frame-rate)
-  (reset! current-frame-rate (int (q/current-frame-rate)))
+  (when @every-second
+    (reset! current-frame-rate (int (q/current-frame-rate))))
   (q/no-stroke)
 
   (if-not @redraw-queued?
@@ -102,7 +103,8 @@
           (draw-square x y color))))
   (doseq [ball (:balls state)]
     (paint-ball ball-colors ball))
-  (redraw-statistics state))
+  (redraw-statistics state)
+  (reset! every-second false))
 
 (defn count-colors [state]
   (->> state
@@ -258,4 +260,5 @@
 
 (defn ^:export start []
   (rdom/render [controls] (js/document.getElementById "gui"))
+  (js/setInterval #(reset! every-second true) 1000)
   (run-sketch))
