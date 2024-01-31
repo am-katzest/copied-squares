@@ -159,6 +159,7 @@
       refresh-statistics))
 
 (defn run-sketch []
+  (reset! redraw-queued? true)
   (q/defsketch copied-squares
     :host "copied-squares"
     :size [(+ (* stat-px stat-size) (px sizex)) (px sizey)]
@@ -259,8 +260,7 @@
    [:div.container.m-2
     [:div.row [:h4 "other"]]
     [int-slider ["frame rate" target-frame-rate 20 [1 60]]]
-    [:div.row "current frame rate: " @current-frame-rate]
-    [:button.btn.btn-secondary {:type "button" :on-click #(reset! redraw-queued? true)} "redraw"]]])
+    [:div.row "current frame rate: " @current-frame-rate]]])
 
 
 (defn ^:export start []
