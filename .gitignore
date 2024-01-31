@@ -13,3 +13,4 @@ figwheel_server.log
 /out/
 /resources/public/js/
 /.cljs_node_repl/
+/.rebel_readline_history

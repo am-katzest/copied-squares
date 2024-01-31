@@ -1,6 +1,6 @@
 # copied-squares
 
-A Quil sketch designed to ... well, that part is up to you.
+my implementation of [this thing](https://hachyderm.io/@vnglst/111828811496422610)
 
 ## Usage
 

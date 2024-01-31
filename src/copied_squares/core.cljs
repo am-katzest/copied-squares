@@ -1,8 +1,8 @@
 (ns copied-squares.core
   (:require [quil.core :as q :include-macros true]
-            [copied-squares.simulation :refer :all]
+            [copied-squares.simulation :refer [sizex sizey ->xy xy* ->ball update-simulation]]
+            [reagent.dom :as rdom]
             [quil.middleware :as m]))
-
 
 (def pxsq 25)
 (defn px [x] (* x pxsq))
@@ -39,8 +39,9 @@
   {:frame 0
    :color-history []
    :squares initial-squares
-   :balls (into [] (for [[color angle] [[18 0.05] [150 (/ Math/PI 4)]]
-                         _repetitions (range 2)]
+   :balls (into [] (for [color [18 150 70]
+                         angle [(/ Math/PI 4.05)]
+                         _repetitions (range 1)]
                      (rand-position color 0.5 0.5 :angle angle)))})
 
 
@@ -48,11 +49,6 @@
 
 (declare refresh-statistics)
 
-(defn update-state [state]
-  (-> (iterate update-state-once (assoc state :changed (mapcat ball-intersecting (:balls state))))
-      (nth physic_frames_per_refresh)
-      (update :frame inc)
-      (refresh-statistics)))
 
 (defn draw-square [x y color]
   (q/fill (wall-colors color))
@@ -92,7 +88,8 @@
 (def stat-offset (* pxsq sizex))
 (def stat-width (* stat-size stat-px))
 (def stat-height (px sizey))
-
+(def history-every-frames 20)
+(defn statistics-frame? [state] (zero? (mod (:frame state) history-every-frames)))
 
 (defn refresh-statistics [state]
   (if (statistics-frame? state)
@@ -120,23 +117,28 @@
     (q/fill 200)
     (q/rect stat-offset 0 stat-width stat-height)
     (draw-color-history state)))
-
+(defn update-state [state]
+  (-> state
+      update-simulation
+      refresh-statistics))
 
 
                                         ; this function is called in index.html
-(defn ^:export run-sketch []
+(defn run-sketch []
   (q/defsketch copied-squares
     :host "copied-squares"
     :size [(+ (* stat-px stat-size) (px sizex)) (px sizey)]
-                                        ; setup function called only once, during sketch initialization.
     :setup setup
-                                        ; update-state is called on each iteration before draw-state.
     :update update-state
     :draw draw-state
-                                        ; This sketch uses functional-mode middleware.
-                                        ; Check quil wiki for more info about middlewares and particularly
-                                        ; fun-mode.
     :middleware [m/fun-mode]))
 
-; uncomment this line to reset the sketch:
-; (run-sketch)
+
+(defn controls []
+  [:div
+   [:button {:on-click run-sketch} "restart"]])
+
+
+(defn ^:export start []
+  (run-sketch)
+  (rdom/render [controls] (js/document.getElementById "gui")))

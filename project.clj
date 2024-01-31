@@ -5,6 +5,9 @@
             :url "http://www.eclipse.org/legal/epl-v10.html"}
   :dependencies [[org.clojure/clojure "1.10.1"]
                  [quil "3.1.0"]
+                 [reagent "1.2.0"]
+                 [cljsjs/react "17.0.2-0"]
+                 [cljsjs/react-dom "17.0.2-0"]
                  [org.clojure/clojurescript "1.10.520"]]
 
   :plugins [[lein-cljsbuild "1.1.7"]
@@ -13,7 +16,7 @@
 
   :clean-targets ^{:protect false} ["resources/public/js"]
   :cljsbuild
-  {:builds [; development build with figwheel hot swap
+  {:builds [                          ; development build with figwheel hot swap
             {:id "development"
              :source-paths ["src"]
              :figwheel true
@@ -22,7 +25,7 @@
               :output-to "resources/public/js/main.js"
               :output-dir "resources/public/js/development"
               :asset-path "js/development"}}
-            ; minified and bundled build for deployment
+                                        ; minified and bundled build for deployment
             {:id "optimized"
              :source-paths ["src"]
              :compiler
@@ -30,4 +33,8 @@
               :output-to "resources/public/js/main.js"
               :output-dir "resources/public/js/optimized"
               :asset-path "js/optimized"
-              :optimizations :advanced}}]})
+              :optimizations :advanced}}]}
+  :figwheel {
+             :server-ip "127.0.0.1"
+  }
+  )
