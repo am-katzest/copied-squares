@@ -68,6 +68,7 @@
     (draw-squares state (sim/ball-intersecting ball))))
 
 (def paint-over-ball-shadows (atom paint-over-with-squares))
+(def draw-balls? (atom true))
 
 (defn paint-ball [palette {:keys [color position radius]} & {:keys [scale] :or {scale 1}}]
   (let [xy position
@@ -94,15 +95,17 @@
   (if-not @redraw-queued?
     (do
       ;; just draw what changed
-      (@paint-over-ball-shadows state)
+      (when @draw-balls?
+        (@paint-over-ball-shadows state))
       (draw-squares state (:changed state)))
     ;; draw every single square again
     (do (reset! redraw-queued? false)
         (doseq [[x row] (map-indexed vector (:squares state))
                 [y color] (map-indexed vector row)]
           (draw-square x y color))))
-  (doseq [ball (:balls state)]
-    (paint-ball ball-colors ball))
+  (when @draw-balls?
+    (doseq [ball (:balls state)]
+      (paint-ball ball-colors ball)))
   (redraw-statistics state)
   (reset! every-second false))
 
@@ -242,11 +245,13 @@
     [checkbox ["balls paint tiles" sim/paint-tiles? true]]
     [radio ["corner collisisions:" dummy :a
             {:a ["reflect (preserves angle)" :todo]
-             :b ["fancy math thing" :todo]}]]]
+             :b ["fancy math thing" :todo]}]]
+    [int-slider ["movement/collision steps per frame" sim/ball-steps-per-frame 1 [1 20]]]]
 
    [:div.container.m-2
     [:div.row [:h4 "visibility"]]
-    [radio ["ball paintover mode" paint-over-ball-shadows :b
+    [checkbox ["draw balls?" draw-balls? true]]
+    [radio ["ball shadow paintover mode" paint-over-ball-shadows :b
             {:a ["overlaping squares" paint-over-with-squares]
              :b ["just ball" paint-over-with-balls]
              :c ["don't :3" identity]}]]

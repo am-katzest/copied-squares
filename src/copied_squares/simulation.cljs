@@ -20,7 +20,7 @@
 (def size  (xy. sizex sizey))
 
 (def delta_t 0.5)
-(def physic_frames_per_refresh 1)
+(def ball-steps-per-frame (atom 1))
 
 (defn low [x] (if (pos? x) x (- x)))
 (defn high [x] (if (neg? x) x (- x)))
@@ -146,5 +146,5 @@
 
 (defn update-simulation [state]
   (-> (iterate update-state-once (assoc state :changed [] :old-balls (:balls state)))
-      (nth physic_frames_per_refresh)
+      (nth @ball-steps-per-frame)
       (update :frame inc)))
