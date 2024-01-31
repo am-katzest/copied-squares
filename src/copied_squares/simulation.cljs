@@ -8,6 +8,7 @@
 (defn xy* [a f] (->xy (* (:x a) f) (* (:y a) f)))
 
 (def sizex 15)
+
 (def sizey sizex)
 (def size  (->xy sizex sizey))
 
@@ -106,11 +107,20 @@
                        [true false] (collide-in-past ball' :x x (if (pos? (:x (:velocity ball))) high low)) ; vertical
                        [false true] (collide-in-past ball' :y y (if (pos? (:y (:velocity ball))) high low)) ; horizontal
                        )]
-          (-> state
-              (update :balls conj ball'')
-              (assoc-in [:squares (:x chosen) (:y chosen)] color)
-              (update :changed conj chosen)
+          (loop [state (update state :balls conj ball'')
+                 [first & rest] intersecting]
+            (if first
+              (-> state
+                  (assoc-in [:squares (:x chosen) (:y chosen)] color)
+                  (update :changed conj chosen)
+                  (recur rest))
+              state)
               )))))
 
 (defn update-state-once [state]
   (reduce update-state-ball (dissoc state :balls) (:balls state)))
+
+(defn update-simulation [state]
+  (-> (iterate update-state-once (assoc state :changed (mapcat ball-intersecting (:balls state))))
+      (nth physic_frames_per_refresh)
+      (update :frame inc)))
