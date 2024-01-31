@@ -1,12 +1,11 @@
 (ns copied-squares.core
   (:require [quil.core :as q :include-macros true]
-            [copied-squares.simulation :refer [sizex sizey ->xy xy* ->ball update-simulation]]
+            [copied-squares.simulation :refer [sizex sizey make-xy xy* ->ball update-simulation]]
             [reagent.dom :as rdom]
             [quil.middleware :as m]))
 
 (def pxsq 25)
 (defn px [x] (* x pxsq))
-
 
 (def initial-squares
   (let [row-l (vec (concat (repeat (/ sizex 2) :gray)
@@ -28,9 +27,9 @@
 
 (defn rand-position [color vel size & {:keys [angle]}]
   (let [color (if (int? color) (keyword (str color)) color)
-        position (->xy (rand-int sizex) (rand-int sizey))
+        position (make-xy (rand-int sizex) (rand-int sizey))
         angle (or angle (rand (* 2.0 Math/PI)))
-        velocity (xy* (->xy (Math/sin angle) (Math/cos angle)) vel)]
+        velocity (xy* (make-xy (Math/sin angle) (Math/cos angle)) vel)]
     (->ball color position velocity size)))
 
 (defn setup []
@@ -56,24 +55,28 @@
 
 (declare redraw-statistics)
 
+(defn draw-squares [state squares]
+  (doseq [xy squares
+          :let [x (.-x xy)
+                y (.-y xy)]]
+    (draw-square x y (get-in state [:squares x y]))))
+
 (defn draw-state [state]
   ;; (q/background 240)
   (q/no-stroke)
 
   (if-let [changed (:changed state)]
     (do
-      (doseq [{:keys [x y]} changed]
-        (draw-square x y (get-in state [:squares x y])))
-      (doseq [{:keys [x y]} (:redraw state)]
-        (draw-square x y (get-in state [:squares x y]))))
+      (draw-squares state changed)
+      (draw-squares state (:redraw state)))
     (doseq [[x row] (map-indexed vector (:squares state))
             [y color] (map-indexed vector row)]
       (draw-square x y color)))
   (doseq [{:keys [color position radius]} (:balls state)]
-    (let [{:keys [x y]} position
+    (let [xy position
           diam (* 2 (px radius))]
       (q/fill (ball-colors color))
-      (q/ellipse (px x) (px y) diam diam)))
+      (q/ellipse (px (.-x xy)) (px (.-y xy)) diam diam)))
   (redraw-statistics state))
 
 (defn count-colors [state]
