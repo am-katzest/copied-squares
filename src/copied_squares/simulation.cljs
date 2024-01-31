@@ -104,8 +104,8 @@
               ball'' (case [(int? x) (int? y)]
                        [true true]  (collide-point ball point) ; corner
                        [false false] ball' ; center (uh oh)
-                       [true false] (collide-in-past ball' :x x (if (pos? (:x (:velocity ball))) high low)) ; vertical
-                       [false true] (collide-in-past ball' :y y (if (pos? (:y (:velocity ball))) high low)) ; horizontal
+                       [true false] (collide-in-past ball' :x x (if (pos? (:x (:velocity ball'))) high low)) ; vertical
+                       [false true] (collide-in-past ball' :y y (if (pos? (:y (:velocity ball'))) high low)) ; horizontal
                        )]
           (loop [state (update state :balls conj ball'')
                  [first & rest] intersecting]
@@ -121,6 +121,6 @@
   (reduce update-state-ball (dissoc state :balls) (:balls state)))
 
 (defn update-simulation [state]
-  (-> (iterate update-state-once (assoc state :changed (mapcat ball-intersecting (:balls state))))
+  (-> (iterate update-state-once (assoc state :changed [] :redraw (mapcat ball-intersecting (:balls state))))
       (nth physic_frames_per_refresh)
       (update :frame inc)))

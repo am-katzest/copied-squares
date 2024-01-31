@@ -61,8 +61,11 @@
   (q/no-stroke)
 
   (if-let [changed (:changed state)]
-    (doseq [{:keys [x y]} changed]
-      (draw-square x y (get-in state [:squares x y])))
+    (do
+      (doseq [{:keys [x y]} changed]
+        (draw-square x y (get-in state [:squares x y])))
+      (doseq [{:keys [x y]} (:redraw state)]
+        (draw-square x y (get-in state [:squares x y]))))
     (doseq [[x row] (map-indexed vector (:squares state))
             [y color] (map-indexed vector row)]
       (draw-square x y color)))
