@@ -182,8 +182,8 @@
     [:button {:on-click run-sketch} "restart"]]
    [:div.container.m-2
     [:div.row [:h4 "simulation"]]
-    [checkbox ["balls collide with tiles" sim/collide-tiles true]]
-    [checkbox ["balls paint tiles" sim/paint-tiles true]]
+    [checkbox ["balls collide with tiles" sim/collide-tiles? true]]
+    [checkbox ["balls paint tiles" sim/paint-tiles? true]]
     ]
    [:div.container.m-2
     [:div.row [:h4 "visibility"]]

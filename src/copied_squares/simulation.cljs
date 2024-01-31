@@ -19,13 +19,11 @@
 (def sizey sizex)
 (def size  (xy. sizex sizey))
 
-
-(def delta_t 0.25)
-(def physic_frames_per_refresh 4)
+(def delta_t 0.5)
+(def physic_frames_per_refresh 1)
 
 (defn low [x] (if (pos? x) x (- x)))
 (defn high [x] (if (neg? x) x (- x)))
-
 
 (defn xydist [a b]
   (let [xy (xy- a b)
@@ -69,9 +67,8 @@
 (defn closest-point [point ball]
   (let [x (.-x point)
         y (.-y point)]
-   (xy. (between (inc x) x (.-x (:position ball)))
+    (xy. (between (inc x) x (.-x (:position ball)))
          (between (inc y) y (.-y (:position ball))))))
-
 
 (defn inside? [point {:keys [position radius]}]
   (> radius (xydist position point)))
@@ -94,9 +91,9 @@
   [acc condition element next]
   (if-not (condition element) acc
           (recur (-> acc
-                  (conj element)
-                  (append-while condition west (xy+ west element))
-                  (append-while condition east (xy+ east element)))
+                     (conj element)
+                     (append-while condition west (xy+ west element))
+                     (append-while condition east (xy+ east element)))
                  condition (xy+ next element) next)))
 
 (defn ball-intersecting [ball]
@@ -107,8 +104,29 @@
         (append-while-splitting good? init north)
         (append-while-splitting good? (xy+ south init) south))))
 
-(def paint-tiles (atom true))
-(def collide-tiles (atom true))
+(def paint-tiles? (atom true))
+(def collide-tiles? (atom true))
+
+(defn- paint-tiles [state' intersecting color]
+  (loop [state state'
+                         [first & rest] intersecting]
+                    (if first
+                      (-> state
+                          (assoc-in [:squares (.-x first) (.-y first)] color)
+                          (update :changed conj first)
+                          (recur rest))
+                      state)))
+
+(defn- collide-ball [point ball]
+  (let [x (.-x point)
+        y (.-y point)]
+   (case [(int? x) (int? y)]
+     [true true]  (collide-point ball point)       ; corner
+     [false false] ball                           ; center (uh oh)
+     [true false] (collide-in-past ball :x x (if (pos? (.-x (:velocity ball))) high low)) ; vertical
+     [false true] (collide-in-past ball :y y (if (pos? (.-y (:velocity ball))) high low)) ; horizontal
+     )))
+
 (defn update-state-ball [state {:keys [color] :as ball}]
   (let [ball' (move-ball ball)
 
@@ -118,26 +136,10 @@
     (if (empty? intersecting) (update state :balls conj ball')
         (let [chosen (apply min-key #(xydist (closest-point % ball) (:position ball)) intersecting)
               point  (closest-point chosen ball)
-              x (.-x point)
-              y (.-y point)
-              ball'' (if-not @collide-tiles ball'
-                             (case [(int? x) (int? y)]
-                               [true true]  (collide-point ball point) ; corner
-                               [false false] ball' ; center (uh oh)
-                               [true false] (collide-in-past ball' :x x (if (pos? (.-x (:velocity ball'))) high low)) ; vertical
-                               [false true] (collide-in-past ball' :y y (if (pos? (.-y (:velocity ball'))) high low)) ; horizontal
-                               ))
+              ball'' (if-not @collide-tiles? ball' (collide-ball point ball'))
               state' (update state :balls conj ball'')]
-          (if-not @paint-tiles state'
-                  (loop [state state'
-                         [first & rest] intersecting]
-                    (if first
-                      (cond-> state
-                        true  (assoc-in [:squares (.-x first) (.-y first)] color)
-                        true  (update :changed conj first)
-                        true  (recur rest))
-                      state)
-                    ))))))
+          (if-not @paint-tiles? state'
+                  (paint-tiles state' intersecting color))))))
 
 (defn update-state-once [state]
   (reduce update-state-ball (dissoc state :balls) (:balls state)))
