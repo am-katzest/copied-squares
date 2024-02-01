@@ -1,61 +1,10 @@
 (ns copied-squares.simulation
-  (:require [quil.core :refer [acos atan2]]))
+  (:require
+   [copied-squares.state :refer [sizex sizey size delta_t coord closest-coord ball-steps-per-frame]]
+   [copied-squares.types :refer [xy update-xy ->xy xy+ xy* xydot xymag xy- map->ball xydist]]
+   [quil.core :refer [acos atan2]]))
 
-(deftype xy [x y])
 
-(defn make-xy [x y] (xy. x y))
-
-(defrecord ball [color position velocity radius])
-
-(defn xy+ [a b] (xy. (+ (.-x a) (.-x b)) (+ (.-y a) (.-y b))))
-
-(defn xy-
-  ([a b] (xy. (- (.-x a) (.-x b)) (- (.-y a) (.-y b))))
-  ([a] (xy. (- (.-x a)) (- (.-y a)))))
-
-(defn xy* [a f] (xy. (* (.-x a) f) (* (.-y a) f)))
-
-(defn xymag [xy]
-  (let [x (.-x xy)
-        y (.-y xy)]
-    (Math/sqrt (+ (* x x) (* y y)))))
-
-(defn xydist [a b]
-  (xymag (xy- a b)))
-
-(defn xydot [a b]
-  (+ (* (.-x a) (.-x b))
-     (* (.-y a) (.-y b))))
-
-(defn update-xy [point axis f]
-  (case axis
-    :y (xy. (.-x point) (f (.-y point)))
-    :x (xy. (f (.-x point)) (.-y point))))
-
-(def sizex 25)
-
-(def sizey 30)
-
-(def size  (xy. sizex sizey))
-
-(defn coord
-  ([point]
-   (+ (.-x point)
-      (* sizex (.-y point))))
-  ([x y] (+ x (* sizex y))))
-
-(defn closest-coord [point]
-  (+ (int (.-x point))
-     (* sizex (int (.-y point)))))
-
-(defn inverse-coord [coord-value]
-  (let [y (quot coord-value sizex)
-        x (- coord-value (* sizex y))]
-    (xy. x y)))
-
-(def delta_t 0.2)
-
-(def ball-steps-per-frame (atom 1))
 
 (defn low [x] (if (pos? x) x (- x)))
 
@@ -64,7 +13,7 @@
 (defn apply-vel [ball]
   (update ball :position xy+ (xy* (:velocity ball) delta_t)))
 
-(defn collide-in-past [ball coord wall side]
+(defn collide-in-past [ball coord _wall side]
   (let [ball' (update ball :velocity update-xy coord side)]
     ;; TODO move it as if it collided in the past
     ball'))

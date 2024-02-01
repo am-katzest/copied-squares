@@ -1,29 +1,18 @@
 (ns copied-squares.core
   (:require [quil.core :as q :include-macros true]
-            [copied-squares.simulation :refer [sizex sizey make-xy xy* ->ball update-simulation coord] :as sim]
+            [copied-squares.simulation :refer [update-simulation] :as sim]
             [copied-squares.gui :as gui]
+            [copied-squares.drawing :as draw]
+            [copied-squares.types :refer [make-xy xy* ->ball]]
+            [copied-squares.state :refer [stat-size sizex sizey] :as state]
             [reagent.core :as r]
             [reagent.dom :as rdom]
             [quil.middleware :as m]))
 
-(def pxsq 25)
-(defn px [x] (* x pxsq))
+
 
 (defn initial-squares []
   (vec (repeat (* sizey sizex) :gray)))
-
-(let [make-pal #(into {} (map (fn [x] [(keyword (str x)) [x %1 %2]]) (range 256)))
-      basic-wall (make-pal 180 200)
-      basic-ball (make-pal 255 150)]
-  (def wall-colors (merge basic-wall
-                          {:gray [0 0 128]
-                           :black [20 20 200]
-                           :white  [0 0 20]}))
-  (def ball-colors (merge basic-ball {:black [0 0 20]
-                                      :white [20 20 200]})))
-
-
-
 
 (defn rand-position [color vel size & {:keys [angle]}]
   (let [color (if (int? color) (keyword (str color)) color)
@@ -53,90 +42,47 @@
 (declare refresh-statistics)
 
 
-(defn draw-square [x y color]
-  (q/fill (wall-colors color))
-  (q/rect (px x) (px y) pxsq pxsq))
-
-(defn draw-small-square [x y color size]
-  (q/fill color)
-  (q/rect (+ size (px x)) (+ size (px y))
-          (- pxsq size size) (- pxsq size size)))
-
-(declare redraw-statistics)
-
-(defn draw-squares [state squares]
-  (doseq [xy squares
-          :let [x (.-x xy)
-                y (.-y xy)]]
-    (draw-square x y (get-in state [:squares (coord xy)]))))
-
-
 (defn paint-over-with-squares [state]
   (doseq [ball (:old-balls state)]
-    (draw-squares state (sim/ball-intersecting ball))))
+    (draw/draw-squares state (sim/ball-intersecting ball))))
 
 (def paint-over-ball-shadows (atom paint-over-with-squares))
 (def draw-balls? (atom true))
 (def draw-clearlists? (atom true))
-
-
-
-(defn paint-ball [palette {:keys [color position radius]} & {:keys [scale] :or {scale 1}}]
-  (let [xy position
-        diam (* 2 scale (px radius))]
-    (q/fill (palette color))
-    (q/ellipse (px (.-x xy)) (px (.-y xy)) diam diam)))
-
-(defn paint-over-with-balls [state]
-  (doseq [ball (:old-balls state)]
-    (paint-ball wall-colors ball :scale 1.05)))
-
-
 (def redraw-queued? (atom true))
 (def target-frame-rate (atom 15))
 (def current-frame-rate (r/atom 15))
-;; (add-watch target-frame-rate :update (fn [_ _ _ n] (q/frame-rate 30))) ; disallowed by quil
 (def every-second (atom true))
-
-
-(defn draw-clearlists [state]
-  (doseq [[color deltas] (:clearlist-deltas state)
-          :let [max (count deltas)
-                scale (/ (* pxsq 0.5) max)]
-          x (range sizex)
-          y (range sizey)
-          :let [val (get-in state [:clearlist color (coord x y)])]]
-    (when (< val (/ max 2))
-      (draw-small-square x y [255 0 255 (if (zero? val) 70 40)] (+ (* pxsq 0.1) (* scale val)))))
-  (reset! redraw-queued? true); it would ovrelap
-  )
 
 (defn draw-state [state]
   (q/frame-rate @target-frame-rate)
   (when @every-second
     (reset! current-frame-rate (int (q/current-frame-rate))))
   (q/no-stroke)
-
   (if-not @redraw-queued?
     (do
       ;; just draw what changed
       (when @draw-balls?
         (@paint-over-ball-shadows state))
-      (draw-squares state (:changed state)))
+      (draw/draw-squares state (:changed state)))
     ;; draw every single square again
     (do (reset! redraw-queued? false)
-        (doseq [i (range (* sizex sizey))
-                :let [xy (sim/inverse-coord i)
-                      color (get-in state [:squares i])]]
-          (draw-square (.-x xy) (.-y xy) color))
+        (->> (* sizex sizey)
+             (range)
+             (map state/inverse-coord)
+             (draw/draw-squares state))
+        ;; (doseq [i (range (* sizex sizey))
+        ;;         :let [xy (sim/inverse-coord i)
+        ;;               color (get-in state [:squares i])]]
+        ;;   (draw-square (.-x xy) (.-y xy) color))
         ))
-  (when @draw-clearlists?
-    (draw-clearlists state))
-  (when @draw-balls?
-    (doseq [ball (:balls state)]
-      (paint-ball ball-colors ball)))
 
-  (redraw-statistics state)
+  (when @draw-clearlists?
+    (draw/draw-clearlists state)
+    (reset! redraw-queued? true))
+  (when @draw-balls?
+    (draw/paint-balls state))
+  (draw/redraw-statistics state)
   (reset! every-second false))
 
 (defn count-colors [state]
@@ -148,40 +94,11 @@
 
 (defn add-sliding [old new n]
   (take n (cons new old)))
-(def stat-size 100)
-(def stat-px 5)
-(def stat-offset (* pxsq sizex))
-(def stat-width (* stat-size stat-px))
-(def stat-height (px sizey))
-(def history-every-frames 20)
-(defn statistics-frame? [state] (zero? (mod (:frame state) history-every-frames)))
 
 (defn refresh-statistics [state]
-  (if (statistics-frame? state)
-    (-> state
-        (update :color-history add-sliding (count-colors state) stat-size))
-    state))
+  (-> state
+      (update :color-history add-sliding (count-colors state) stat-size)))
 
-(defn draw-color-history [state]
-  (doseq [[i [prev next]] (map-indexed vector (partition 2 1 (:color-history state)))
-          key (keys (into prev next))  ;unlikely, but data could be missing
-          :let [prevv (get prev key 0)
-                nextv (get next key 0)
-                x1 (- (+ stat-width stat-offset) (* i stat-px))
-                x2 (- (+ stat-width stat-offset) (* (inc i) stat-px))
-                y1 (- stat-height (* stat-height prevv))
-                y2 (- stat-height (* stat-height nextv))]]
-    (apply q/stroke (wall-colors key))
-    (q/stroke-weight 3)
-    (q/line x1 y1 x2 y2)
-    ))
-
-
-(defn redraw-statistics [state]
-  (when (statistics-frame? state)
-    (q/fill 200)
-    (q/rect stat-offset 0 stat-width stat-height)
-    (draw-color-history state)))
 (defn update-state [state]
   (-> state
       update-simulation
@@ -191,7 +108,7 @@
   (reset! redraw-queued? true)
   (q/defsketch copied-squares
     :host "copied-squares"
-    :size [(+ (* stat-px stat-size) (px sizex)) (px sizey)]
+    :size (state/get-size)
     :setup setup
     :update update-state
     :draw draw-state
@@ -202,22 +119,25 @@
    [:div.container.m-2
     [:div.row [:h4 "setup"]]
     [gui/button run-sketch "restart"]]
+   ;; option for initial board
+   ;; closest ball/all gray
+   ;; would look neat with circular arrangement
    [:div.container.m-2
     [:div.row [:h4 "simulation"]]
     [gui/checkbox ["balls collide with tiles" sim/collide-tiles? true]]
     [gui/checkbox ["balls paint tiles" sim/paint-tiles? true]]
     [gui/radio ["corner collisisions:" sim/point-collision :a
-            {:a ["reflect (preserves angle)" sim/collide-point-dumb]
-             :b ["fancy math thing" sim/collide-point-fancy]}]]
-    [gui/int-slider ["steps per frame" sim/ball-steps-per-frame 1 [1 500]]]]
+                {:a ["reflect (preserves angle)" sim/collide-point-dumb]
+                 :b ["fancy math thing" sim/collide-point-fancy]}]]
+    [gui/int-slider ["steps per frame" state/ball-steps-per-frame 1 [1 500]]]]
 
    [:div.container.m-2
     [:div.row [:h4 "visibility"]]
     [gui/checkbox ["draw balls?" draw-balls? true]]
     [gui/radio ["ball shadow paintover mode" paint-over-ball-shadows :b
-            {:a ["overlaping squares" paint-over-with-squares]
-             :b ["just ball" paint-over-with-balls]
-             :c ["don't :3" identity]}]]
+                {:a ["overlaping squares" paint-over-with-squares]
+                 :b ["just ball" draw/paint-over-with-balls]
+                 :c ["don't :3" identity]}]]
     [gui/button #(reset! redraw-queued? true) "redraw"]
     [gui/checkbox ["draw clearlists?" draw-clearlists? false]]]
 
