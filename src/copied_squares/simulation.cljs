@@ -176,11 +176,11 @@
                                 ball (map->ball {:position xy :radius radius})]
                           b (ball-intersecting ball true)]
                       b)
-                    (map coord)
+                    (map (fn [xy] [(.-x xy) (.-y xy)]))
                     sort
                     dedupe
-                    (mapv inverse-coord))
-        clearlist (vec (repeat (* sizex sizey) (- (count deltas) 2)))]
+                    (mapv (fn  [[x y]] (xy. x y))))
+        clearlist (vec (repeat (* sizex sizey) (count deltas)))]
     (-> state
         (assoc-in [:clearlist-deltas color] deltas)
         (assoc-in [:clearlist color] clearlist))))
