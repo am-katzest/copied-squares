@@ -46,3 +46,8 @@
     (xy. x y)))
 
 (defn get-size [] [(+ (* stat-px stat-size) (px sizex)) (px sizey)])
+
+;hacky, i'm unable to set this at start
+(def rgb-colors (atom (into {}
+                            (for [i (range 256)]
+                              [(keyword (str i)) "#FFF"]))))

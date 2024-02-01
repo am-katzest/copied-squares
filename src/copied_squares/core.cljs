@@ -8,9 +8,8 @@
             [copied-squares.state :refer [sizex sizey] :as state]
             [reagent.core :as r]
             [reagent.dom :as rdom]
-            [quil.middleware :as m]))
-
-
+            [quil.middleware :as m]
+            [copied-squares.state :as s]))
 
 (defn initial-squares []
   (vec (repeat (* sizey sizex) :gray)))
@@ -22,7 +21,28 @@
         velocity (xy* (make-xy (Math/sin angle) (Math/cos angle)) vel)]
     (->ball color position velocity size)))
 
+(defn hex "converts a number (0..255) to hexadecimal" [n]
+  (let [lookup "0123456789abcdef"]
+    (str (nth lookup (quot n 16)) (nth lookup (mod n 16)))))
+
+(defn color->rgb [k]
+  (->> k
+       (draw/wall-colors)               ;lookup color
+       (apply q/color)                  ;create quil color object
+       ((juxt q/red q/green q/blue))    ;get r g b
+       (map (comp hex int))             ;convert to hex
+       (apply str "#")))             ;concat
+
+(defn update-color-palette []
+  ;; it must be called in one of "quil" functions, so i cannot just
+  (reset! s/rgb-colors
+          (into {}
+                (for [i (range 256)]
+                  (let [k (keyword (str i))]
+                    [k (color->rgb k)])))))
+
 (defn setup []
+  (update-color-palette)
   (q/frame-rate 15)
   (q/color-mode :hsb)
   (->
@@ -74,9 +94,6 @@
     (draw/paint-balls state))
   (reset! every-second false))
 
-
-
-
 (defn update-state [state]
   (-> state
       update-simulation
@@ -124,7 +141,6 @@
     [:div.row [:h4 "other"]]
     [gui/int-slider ["frame rate" target-frame-rate 20 [1 60]]]
     [:div.row "current frame rate: " @current-frame-rate]]])
-
 
 (defn ^:export start []
   (rdom/render [controls] (js/document.getElementById "gui"))
