@@ -17,15 +17,26 @@
   (+ (* (.-x a) (.-x b))
      (* (.-y a) (.-y b))))
 
+
 (defn update-xy [point axis f]
   (case axis
     :y (xy. (.-x point) (f (.-y point)))
     :x (xy. (f (.-x point)) (.-y point))))
 
-(def sizex 15)
+(def sizex 25)
 
 (def sizey sizex)
 (def size  (xy. sizex sizey))
+(defn coord [point]
+  (+ (.-x point)
+     (* sizex (.-y point))))
+(defn closest-coord [point]
+  (+ (int (.-x point))
+     (* sizex (int (.-y point)))))
+(defn inverse-coord [coord-value]
+  (let [y (quot coord-value sizex)
+        x (- coord-value (* sizex y))]
+    (xy. x y)))
 
 (def delta_t 0.5)
 (def ball-steps-per-frame (atom 1))
@@ -41,6 +52,7 @@
   (let [ball' (update ball :velocity update-xy coord side)]
     ;; TODO move it as if it collided in the past
     ball'))
+
 (defn collide-point [ball point]
   (if (neg? (xydot (:velocity ball) (- (:position ball) point)))
     ball                                ; already moving away
@@ -117,7 +129,7 @@
                          [first & rest] intersecting]
                     (if first
                       (-> state
-                          (assoc-in [:squares (.-y first) (.-x first)] color)
+                          (assoc-in [:squares (coord first)] color)
                           (update :changed conj first)
                           (recur rest))
                       state)))
@@ -137,7 +149,7 @@
 
         squares (:squares state)
         intersecting (->> (ball-intersecting ball')
-                          (filter (fn [xy] (not= (get-in squares [(.-y xy) (.-x xy)]) color))))]
+                          (filter (fn [xy] (not= (get squares (coord xy)) color))))]
     (if (empty? intersecting) (update state :balls conj ball')
         (let [chosen (apply min-key #(xydist (closest-point % ball) (:position ball)) intersecting)
               point  (closest-point chosen ball)

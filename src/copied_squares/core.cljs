@@ -1,6 +1,6 @@
 (ns copied-squares.core
   (:require [quil.core :as q :include-macros true]
-            [copied-squares.simulation :refer [sizex sizey make-xy xy* ->ball update-simulation] :as sim]
+            [copied-squares.simulation :refer [sizex sizey make-xy xy* ->ball update-simulation coord] :as sim]
             [reagent.core :as r]
             [reagent.dom :as rdom]
             [quil.middleware :as m]))
@@ -9,8 +9,7 @@
 (defn px [x] (* x pxsq))
 
 (defn initial-squares []
-  (let [row-l (vec (repeat sizex :gray))]
-    (vec (repeat sizey row-l))))
+  (vec (repeat (* sizey sizex) :gray)))
 
 (let [make-pal #(into {} (map (fn [x] [(keyword (str x)) [x %1 %2]]) (range 256)))
       basic-wall (make-pal 180 200)
@@ -59,7 +58,7 @@
   (doseq [xy squares
           :let [x (.-x xy)
                 y (.-y xy)]]
-    (draw-square x y (get-in state [:squares y x]))))
+    (draw-square x y (get-in state [:squares (coord xy)]))))
 
 
 (defn paint-over-with-squares [state]
@@ -99,9 +98,11 @@
       (draw-squares state (:changed state)))
     ;; draw every single square again
     (do (reset! redraw-queued? false)
-        (doseq [[y row] (map-indexed vector (:squares state))
-                [x color] (map-indexed vector row)]
-          (draw-square x y color))))
+        (doseq [i (range (* sizex sizey))
+                :let [xy (sim/inverse-coord i)
+                      color (get-in state [:squares i])]]
+          (draw-square (.-x xy) (.-y xy) color))
+        ))
   (when @draw-balls?
     (doseq [ball (:balls state)]
       (paint-ball ball-colors ball)))
@@ -111,7 +112,6 @@
 (defn count-colors [state]
   (->> state
        :squares
-       (apply concat)
        (reduce (fn [s x] (update s x #(inc (or % 0)))) {})
        (map (fn [[k v]] [k (/ v (* sizex sizey))]))
        (into {})))
@@ -246,7 +246,7 @@
     [radio ["corner collisisions:" dummy :a
             {:a ["reflect (preserves angle)" :todo]
              :b ["fancy math thing" :todo]}]]
-    [int-slider ["steps per frame" sim/ball-steps-per-frame 1 [1 300]]]]
+    [int-slider ["steps per frame" sim/ball-steps-per-frame 1 [1 5000]]]]
 
    [:div.container.m-2
     [:div.row [:h4 "visibility"]]
