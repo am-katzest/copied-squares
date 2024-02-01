@@ -72,8 +72,6 @@
 (defn collide-point-dumb [ball _point]
   (update-in ball [:velocity] #(->xy (- (.-y %)) (- (.-x %)))))
 
-(defn calc-angle [a b]
-  (acos (/ (xydot a b) (xymag a) (xymag b))))
 
 (defn to-the-right? [a b]
   ;; https://stackoverflow.com/questions/13221873/determining-if-one-2d-vector-is-to-the-right-or-left-of-another
@@ -81,14 +79,16 @@
         arot (xy. (Math/cos angleacw) (Math/sin angleacw))]
     (pos? (xydot arot b))))
 
+(defn calc-angle [a b]
+  ((if (to-the-right? a b) + -) (acos (/ (xydot a b) (xymag a) (xymag b)))))
+
 (defn collide-point-fancy [{:keys [position velocity] :as ball} point]
-;; https://physics.stackexchange.com/questions/464343/elastic-collision-between-a-circle-and-a-point
+  ;; https://physics.stackexchange.com/questions/464343/elastic-collision-between-a-circle-and-a-point
   (let [angle (atan2 (.-y velocity) (.-x velocity))
         a velocity
         b (xy- point position)
-        angle-between (calc-angle a b)
-        corrected-angle ((if (to-the-right? a b) + -) angle-between)
-        angle' (+ Math/PI angle (* 2 corrected-angle))
+        relative-angle (calc-angle a b)
+        angle' (+ Math/PI angle (* 2 relative-angle))
         speed (xymag velocity)          ; will drift
         x (* speed (Math/cos angle'))
         y (* speed (Math/sin angle'))
