@@ -40,7 +40,7 @@
     :squares (initial-squares)
     :clearlist-deltas {}
     :clearlist {}
-    :balls (into [] (for [color [18 150 70]
+    :balls (into [] (for [color [18 150 70 134 230]
                           angle [(/ Math/PI 4.05)]
                           _repetitions (range 1)]
                       (rand-position color 0.5 0.5 :angle angle)))}
@@ -272,9 +272,9 @@
     [:div.row [:h4 "simulation"]]
     [checkbox ["balls collide with tiles" sim/collide-tiles? true]]
     [checkbox ["balls paint tiles" sim/paint-tiles? true]]
-    [radio ["corner collisisions:" dummy :a
-            {:a ["reflect (preserves angle)" :todo]
-             :b ["fancy math thing" :todo]}]]
+    [radio ["corner collisisions:" sim/point-collision :a
+            {:a ["reflect (preserves angle)" sim/collide-point-dumb]
+             :b ["fancy math thing" sim/collide-point-fancy]}]]
     [int-slider ["steps per frame" sim/ball-steps-per-frame 1 [1 500]]]]
 
    [:div.container.m-2

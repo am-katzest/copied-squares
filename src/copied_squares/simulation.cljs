@@ -1,18 +1,28 @@
-(ns copied-squares.simulation)
+(ns copied-squares.simulation
+  (:require [quil.core :refer [acos atan2]]))
 
 (deftype xy [x y])
+
 (defn make-xy [x y] (xy. x y))
 
 (defrecord ball [color position velocity radius])
 
 (defn xy+ [a b] (xy. (+ (.-x a) (.-x b)) (+ (.-y a) (.-y b))))
-(defn xy- [a b] (xy. (- (.-x a) (.-x b)) (- (.-y a) (.-y b))))
+
+(defn xy-
+  ([a b] (xy. (- (.-x a) (.-x b)) (- (.-y a) (.-y b))))
+  ([a] (xy. (- (.-x a)) (- (.-y a)))))
+
 (defn xy* [a f] (xy. (* (.-x a) f) (* (.-y a) f)))
-(defn xydist [a b]
-  (let [xy (xy- a b)
-        x (.-x xy)
+
+(defn xymag [xy]
+  (let [x (.-x xy)
         y (.-y xy)]
     (Math/sqrt (+ (* x x) (* y y)))))
+
+(defn xydist [a b]
+  (xymag (xy- a b)))
+
 (defn xydot [a b]
   (+ (* (.-x a) (.-x b))
      (* (.-y a) (.-y b))))
@@ -24,25 +34,31 @@
 
 (def sizex 25)
 
-(def sizey sizex)
+(def sizey 30)
+
 (def size  (xy. sizex sizey))
+
 (defn coord
   ([point]
    (+ (.-x point)
       (* sizex (.-y point))))
   ([x y] (+ x (* sizex y))))
+
 (defn closest-coord [point]
   (+ (int (.-x point))
      (* sizex (int (.-y point)))))
+
 (defn inverse-coord [coord-value]
   (let [y (quot coord-value sizex)
         x (- coord-value (* sizex y))]
     (xy. x y)))
 
-(def delta_t 0.5)
+(def delta_t 0.2)
+
 (def ball-steps-per-frame (atom 1))
 
 (defn low [x] (if (pos? x) x (- x)))
+
 (defn high [x] (if (neg? x) x (- x)))
 
 (defn apply-vel [ball]
@@ -53,10 +69,38 @@
     ;; TODO move it as if it collided in the past
     ball'))
 
+(defn collide-point-dumb [ball _point]
+  (update-in ball [:velocity] #(->xy (- (.-y %)) (- (.-x %)))))
+
+(defn calc-angle [a b]
+  (acos (/ (xydot a b) (xymag a) (xymag b))))
+
+(defn to-the-right? [a b]
+  ;; https://stackoverflow.com/questions/13221873/determining-if-one-2d-vector-is-to-the-right-or-left-of-another
+  (let [angleacw (+ (/ Math/PI 2) (atan2 (.-y a) (.-x a)))
+        arot (xy. (Math/cos angleacw) (Math/sin angleacw))]
+    (pos? (xydot arot b))))
+
+(defn collide-point-fancy [{:keys [position velocity] :as ball} point]
+;; https://physics.stackexchange.com/questions/464343/elastic-collision-between-a-circle-and-a-point
+  (let [angle (atan2 (.-y velocity) (.-x velocity))
+        a velocity
+        b (xy- point position)
+        angle-between (calc-angle a b)
+        corrected-angle ((if (to-the-right? a b) + -) angle-between)
+        angle' (+ Math/PI angle (* 2 corrected-angle))
+        speed (xymag velocity)          ; will drift
+        x (* speed (Math/cos angle'))
+        y (* speed (Math/sin angle'))
+        xy (xy. x y)]
+    (assoc ball :velocity xy)))
+
+(def point-collision (atom collide-point-dumb))
+
 (defn collide-point [ball point]
   (if (neg? (xydot (:velocity ball) (- (:position ball) point)))
     ball                                ; already moving away
-    (let [ball' (update-in ball [:velocity] #(->xy (- (.-y %)) (- (.-x %))))]
+    (let [ball' (@point-collision ball point)]
       ;; TODO  collide properly and move it as if it collided in the past
       ball')))
 
@@ -65,6 +109,7 @@
     (cond (> (+ pos radius) (.-x size)) (collide-in-past ball :x nil high)
           (< (- pos radius) 0) (collide-in-past ball :x nil low)
           :else ball)))
+
 (defn collide-walls-y [{:keys [position radius] :as ball}]
   (let [pos (.-y position)]
     (cond (> (+ pos radius) (.-y size)) (collide-in-past ball :y nil high)
@@ -74,6 +119,7 @@
 (defn move-ball [ball]
   (let [ball' (->> ball apply-vel collide-walls-x collide-walls-y)]
     ball'))
+
 (defn inside-board? [point]
   (and (< -1 (.-x point) sizex)
        (< -1 (.-y point) sizey)))
@@ -124,7 +170,9 @@
   ([ball] (ball-intersecting ball false)))
 
 (def paint-tiles? (atom true))
+
 (def collide-tiles? (atom true))
+
 (declare update-clearlists)
 
 (defn- paint-tiles [state' intersecting color]
@@ -158,7 +206,6 @@
                         (inside-board? xy') (update  (coord xy') change)))))))
 
 (defn update-clearlists [state oldcolor newcolor xy]
-  ;; (println oldcolor newcolor (count (get-in state [:clearlist-deltas newcolor])))
   (let [newdeltas (get-in state [:clearlist-deltas newcolor])
         olddeltas (get-in state [:clearlist-deltas oldcolor])]
     (cond-> state
@@ -195,7 +242,6 @@
        (reduce add-clearlist state)))
 
 (defn in-clearlist? [state {:keys [color position]}]
-  ;; (println color (get-in state [:clearlist color (closest-coord position)]))
   (zero? (get-in state [:clearlist color (closest-coord position)])))
 
 (defn update-state-ball [state {:keys [color] :as ball}]
