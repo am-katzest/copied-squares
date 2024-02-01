@@ -76,6 +76,7 @@
   (draw-color-history state))
 
 (defn redraw-every-square [state]
+  (q/no-stroke)
   (->> (* sizex sizey)
        (range)
        (map s/inverse-coord)
