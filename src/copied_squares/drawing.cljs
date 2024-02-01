@@ -58,10 +58,10 @@
           key (keys (into prev next))   ;unlikely, but data could be missing
           :let [prevv (get prev key 0)
                 nextv (get next key 0)
-                x1 (- (+ s/stat-width s/stat-offset) (* i s/stat-px))
-                x2 (- (+ s/stat-width s/stat-offset) (* (inc i) s/stat-px))
-                y1 (- s/stat-height (* s/stat-height prevv))
-                y2 (- s/stat-height (* s/stat-height nextv))]]
+                x1 (+ (+ s/stat-offset) (* i s/stat-px))
+                x2 (+ (+ s/stat-offset) (* (inc i) s/stat-px))
+                y1 (- s/stat-height (* s/stat-height (/ prevv sizex sizey)))
+                y2 (- s/stat-height (* s/stat-height (/ nextv sizex sizey)))]]
     (apply q/stroke (wall-colors key))
     (q/stroke-weight 3)
     (q/line x1 y1 x2 y2)))

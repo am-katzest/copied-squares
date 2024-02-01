@@ -130,7 +130,7 @@
       (let [oldcolor (get-in state [:squares (coord first)])]
         (-> state
             (assoc-in [:squares (coord first)] color)
-            (update :changed conj first)
+            (update :changed conj [first oldcolor color])
             (update-clearlists oldcolor color first)
             (recur rest))))))
 

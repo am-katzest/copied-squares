@@ -4,7 +4,8 @@
             [copied-squares.gui :as gui]
             [copied-squares.drawing :as draw]
             [copied-squares.types :refer [make-xy xy* ->ball]]
-            [copied-squares.state :refer [stat-size sizex sizey] :as state]
+            [copied-squares.statistics :as stat]
+            [copied-squares.state :refer [sizex sizey] :as state]
             [reagent.core :as r]
             [reagent.dom :as rdom]
             [quil.middleware :as m]))
@@ -34,13 +35,8 @@
                           angle [(/ Math/PI 4.05)]
                           _repetitions (range 1)]
                       (rand-position color 0.5 0.5 :angle angle)))}
-   sim/create-clearlists))
-
-
-
-
-(declare refresh-statistics)
-
+   sim/create-clearlists
+   stat/count-colors))
 
 (defn paint-over-with-squares [state]
   (doseq [ball (:old-balls state)]
@@ -64,7 +60,7 @@
       ;; just draw what changed
       (when @draw-balls?
         (@paint-over-ball-shadows state))
-      (draw/draw-squares state (:changed state)))
+      (draw/draw-squares state (map first (:changed state))))
     ;; draw every single square again
     (do (reset! redraw-queued? false)
         (->> (* sizex sizey)
@@ -85,24 +81,14 @@
   (draw/redraw-statistics state)
   (reset! every-second false))
 
-(defn count-colors [state]
-  (->> state
-       :squares
-       (reduce (fn [s x] (update s x #(inc (or % 0)))) {})
-       (map (fn [[k v]] [k (/ v (* sizex sizey))]))
-       (into {})))
 
-(defn add-sliding [old new n]
-  (take n (cons new old)))
 
-(defn refresh-statistics [state]
-  (-> state
-      (update :color-history add-sliding (count-colors state) stat-size)))
 
 (defn update-state [state]
   (-> state
       update-simulation
-      refresh-statistics))
+      (assoc :old-squares (:squares state))
+      stat/refresh-statistics))
 
 (defn run-sketch []
   (reset! redraw-queued? true)
@@ -126,7 +112,7 @@
     [:div.row [:h4 "simulation"]]
     [gui/checkbox ["balls collide with tiles" sim/collide-tiles? true]]
     [gui/checkbox ["balls paint tiles" sim/paint-tiles? true]]
-    [gui/radio ["corner collisisions:" sim/point-collision :a
+    [gui/radio ["corner collisisions:" sim/point-collision :b
                 {:a ["reflect (preserves angle)" sim/collide-point-dumb]
                  :b ["fancy math thing" sim/collide-point-fancy]}]]
     [gui/int-slider ["steps per frame" state/ball-steps-per-frame 1 [1 500]]]]
