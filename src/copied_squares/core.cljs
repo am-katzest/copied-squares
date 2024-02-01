@@ -62,7 +62,6 @@
         (draw/redraw-every-square state))))
 
 (defn draw-state [state]
-  (q/no-stroke)
   (q/frame-rate @target-frame-rate)
   (when @every-second
     (draw/redraw-statistics state)

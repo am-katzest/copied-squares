@@ -34,14 +34,17 @@
     (q/ellipse (px (.-x xy)) (px (.-y xy)) diam diam)))
 
 (defn paint-over-with-balls [state]
+  (q/no-stroke)
   (doseq [ball (:old-balls state)]
     (paint-ball wall-colors ball :scale 1.05)))
 
 (defn paint-balls [state]
+  (q/no-stroke)
   (doseq [ball (:balls state)]
     (paint-ball ball-colors ball)))
 
 (defn draw-clearlists [state]
+  (q/no-stroke)
   (doseq [[color deltas] (:clearlist-deltas state)
           :let [max (count deltas)
                 scale (/ (* pxsq 0.5) max)]
@@ -67,6 +70,7 @@
     (q/line x1 y1 x2 y2)))
 
 (defn redraw-statistics [state]
+  (q/no-stroke)
   (q/fill 200)
   (q/rect s/stat-offset 0 s/stat-width s/stat-height)
   (draw-color-history state))
