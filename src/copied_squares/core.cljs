@@ -34,13 +34,17 @@
 (defn setup []
   (q/frame-rate 15)
   (q/color-mode :hsb)
-  {:frame 0
-   :color-history []
-   :squares (initial-squares)
-   :balls (into [] (for [color [18 150 70]
-                         angle [(/ Math/PI 4.05)]
-                         _repetitions (range 1)]
-                     (rand-position color 0.5 0.5 :angle angle)))})
+  (->
+   {:frame 0
+    :color-history []
+    :squares (initial-squares)
+    :clearlist-deltas {}
+    :clearlist {}
+    :balls (into [] (for [color [18 150 70]
+                          angle [(/ Math/PI 4.05)]
+                          _repetitions (range 1)]
+                      (rand-position color 0.5 0.5 :angle angle)))}
+   sim/create-clearlists))
 
 
 
@@ -51,6 +55,11 @@
 (defn draw-square [x y color]
   (q/fill (wall-colors color))
   (q/rect (px x) (px y) pxsq pxsq))
+
+(defn draw-small-square [x y color size]
+  (q/fill color)
+  (q/rect (+ size (px x)) (+ size (px y))
+          (- pxsq size size) (- pxsq size size)))
 
 (declare redraw-statistics)
 
@@ -67,6 +76,9 @@
 
 (def paint-over-ball-shadows (atom paint-over-with-squares))
 (def draw-balls? (atom true))
+(def draw-clearlists? (atom true))
+
+
 
 (defn paint-ball [palette {:keys [color position radius]} & {:keys [scale] :or {scale 1}}]
   (let [xy position
@@ -84,6 +96,21 @@
 (def current-frame-rate (r/atom 15))
 ;; (add-watch target-frame-rate :update (fn [_ _ _ n] (q/frame-rate 30))) ; disallowed by quil
 (def every-second (atom true))
+
+
+(defn draw-clearlists [state]
+  (doseq [[color deltas] (:clearlist-deltas state)
+          :let [max (count deltas)
+                scale (/ (* pxsq 0.5) max)]
+          x (range sizex)
+          y (range sizey)
+          :let [val (get-in state [:clearlist color (coord x y)])]]
+    (when (< val (/ max 2))
+      (when (zero? (rand-int 100)) (println val))
+      (draw-small-square x y [255 0 255 50] (+ (* pxsq 0.1) (* scale val)))))
+  (reset! redraw-queued? true); it would ovrelap
+  )
+
 (defn draw-state [state]
   (q/frame-rate @target-frame-rate)
   (when @every-second
@@ -103,9 +130,12 @@
                       color (get-in state [:squares i])]]
           (draw-square (.-x xy) (.-y xy) color))
         ))
+  (when @draw-clearlists?
+    (draw-clearlists state))
   (when @draw-balls?
     (doseq [ball (:balls state)]
       (paint-ball ball-colors ball)))
+
   (redraw-statistics state)
   (reset! every-second false))
 
@@ -255,7 +285,8 @@
             {:a ["overlaping squares" paint-over-with-squares]
              :b ["just ball" paint-over-with-balls]
              :c ["don't :3" identity]}]]
-    [:button.btn.btn-secondary {:type "button" :on-click #(reset! redraw-queued? true)} "redraw"]]
+    [:button.btn.btn-secondary {:type "button" :on-click #(reset! redraw-queued? true)} "redraw"]
+    [checkbox ["draw clearlists?" draw-clearlists? false]]]
    [:div.container.m-2
     [:div.row [:h4 "other"]]
     [int-slider ["frame rate" target-frame-rate 20 [1 60]]]

@@ -17,7 +17,6 @@
   (+ (* (.-x a) (.-x b))
      (* (.-y a) (.-y b))))
 
-
 (defn update-xy [point axis f]
   (case axis
     :y (xy. (.-x point) (f (.-y point)))
@@ -27,9 +26,11 @@
 
 (def sizey sizex)
 (def size  (xy. sizex sizey))
-(defn coord [point]
-  (+ (.-x point)
-     (* sizex (.-y point))))
+(defn coord
+  ([point]
+   (+ (.-x point)
+      (* sizex (.-y point))))
+  ([x y] (+ x (* sizex y))))
 (defn closest-coord [point]
   (+ (int (.-x point))
      (* sizex (int (.-y point)))))
@@ -43,7 +44,6 @@
 
 (defn low [x] (if (pos? x) x (- x)))
 (defn high [x] (if (neg? x) x (- x)))
-
 
 (defn apply-vel [ball]
   (update ball :position xy+ (xy* (:velocity ball) delta_t)))
@@ -113,50 +113,106 @@
                      (append-while condition east (xy+ east element)))
                  condition (xy+ next element) next)))
 
-(defn ball-intersecting [ball]
-  (let [center (:position ball)
-        good? #(and (inside-board? %) (inside? (closest-point % ball) ball))
-        init (xy. (Math/floor (.-x center)) (Math/floor (.-y center)))]
-    (-> []
-        (append-while-splitting good? init north)
-        (append-while-splitting good? (xy+ south init) south))))
+(defn ball-intersecting
+  ([ball ignore-walls]
+   (let [center (:position ball)
+         good? #(and (or (inside-board? %) ignore-walls) (inside? (closest-point % ball) ball))
+         init (xy. (Math/floor (.-x center)) (Math/floor (.-y center)))]
+     (-> []
+         (append-while-splitting good? init north)
+         (append-while-splitting good? (xy+ south init) south))))
+  ([ball] (ball-intersecting ball false)))
 
 (def paint-tiles? (atom true))
 (def collide-tiles? (atom true))
+(declare update-clearlists)
 
 (defn- paint-tiles [state' intersecting color]
-  (loop [state state'
-                         [first & rest] intersecting]
-                    (if first
-                      (-> state
-                          (assoc-in [:squares (coord first)] color)
-                          (update :changed conj first)
-                          (recur rest))
-                      state)))
+  (loop [state state' [first & rest] intersecting]
+    (if-not first state
+      (let [oldcolor (get-in state [:squares (coord first)])]
+        (-> state
+            (assoc-in [:squares (coord first)] color)
+            (update :changed conj first)
+            (update-clearlists oldcolor color first)
+            (recur rest))))))
 
 (defn- collide-ball [point ball]
   (let [x (.-x point)
         y (.-y point)]
-   (case [(int? x) (int? y)]
-     [true true]  (collide-point ball point)       ; corner
-     [false false] ball                           ; center (uh oh)
-     [true false] (collide-in-past ball :x x (if (pos? (.-x (:velocity ball))) high low)) ; vertical
-     [false true] (collide-in-past ball :y y (if (pos? (.-y (:velocity ball))) high low)) ; horizontal
-     )))
+    (case [(int? x) (int? y)]
+      [true true]  (collide-point ball point)       ; corner
+      [false false] ball                           ; center (uh oh)
+      [true false] (collide-in-past ball :x x (if (pos? (.-x (:velocity ball))) high low)) ; vertical
+      [false true] (collide-in-past ball :y y (if (pos? (.-y (:velocity ball))) high low)) ; horizontal
+      )))
+
+;; program keeps "clearlists", arrays of indexes where any ball has no chance of collision
+
+(defn update-clearlist [list origin deltas change]
+  (loop [[delta & rest] deltas
+         list list]
+    (if (nil? delta) list
+        (let [xy' (xy+ origin delta)]
+          (recur rest (cond-> list
+                        (inside-board? xy') (update  (coord xy') change)))))))
+
+(defn update-clearlists [state oldcolor newcolor xy]
+  ;; (println oldcolor newcolor (count (get-in state [:clearlist-deltas newcolor])))
+  (let [newdeltas (get-in state [:clearlist-deltas newcolor])
+        olddeltas (get-in state [:clearlist-deltas oldcolor])]
+    (cond-> state
+     newdeltas (update-in [:clearlist newcolor] update-clearlist xy newdeltas dec)
+     olddeltas (update-in [:clearlist oldcolor] update-clearlist xy olddeltas inc))))
+
+;; only runs once, can be slow
+(defn add-clearlist [state [color radius]]
+  ;; deltas are relative positions of squares (relative to the one containing ball)
+  ;; with which ball could collide
+  ;; value for each square contains the number of collidable neighbours
+  (let [deltas (->> (for [x [0.01 0.5 0.99]
+                          y [0.01 0.5 0.99]
+                          :let [xy (xy. x y)
+                                ball (map->ball {:position xy :radius radius})]
+                          b (ball-intersecting ball true)]
+                      b)
+                    (map coord)
+                    sort
+                    dedupe
+                    (mapv inverse-coord))
+        clearlist (vec (repeat (* sizex sizey) (- (count deltas) 2)))]
+    (-> state
+        (assoc-in [:clearlist-deltas color] deltas)
+        (assoc-in [:clearlist color] clearlist))))
+
+(defn create-clearlists [state]
+  (->> state
+       :balls
+       (map (fn [b] [(:color b) (:radius b)]))
+       ;; (filter (fn [[_ radius]] (pos? radius))) no need to keep them for points
+       sort
+       dedupe
+       (reduce add-clearlist state)))
+
+(defn in-clearlist? [state {:keys [color position]}]
+  ;; (println color (get-in state [:clearlist color (closest-coord position)]))
+  (zero? (get-in state [:clearlist color (closest-coord position)])))
 
 (defn update-state-ball [state {:keys [color] :as ball}]
-  (let [ball' (move-ball ball)
+  (if (in-clearlist? state ball)
+    (update state :balls conj (apply-vel ball))
+    (let [ball' (move-ball ball)
 
-        squares (:squares state)
-        intersecting (->> (ball-intersecting ball')
-                          (filter (fn [xy] (not= (get squares (coord xy)) color))))]
-    (if (empty? intersecting) (update state :balls conj ball')
-        (let [chosen (apply min-key #(xydist (closest-point % ball) (:position ball)) intersecting)
-              point  (closest-point chosen ball)
-              ball'' (if-not @collide-tiles? ball' (collide-ball point ball'))
-              state' (update state :balls conj ball'')]
-          (if-not @paint-tiles? state'
-                  (paint-tiles state' intersecting color))))))
+          squares (:squares state)
+          intersecting (->> (ball-intersecting ball')
+                            (filter (fn [xy] (not= (get squares (coord xy)) color))))]
+      (if (empty? intersecting) (update state :balls conj ball')
+          (let [chosen (apply min-key #(xydist (closest-point % ball) (:position ball)) intersecting)
+                point  (closest-point chosen ball)
+                ball'' (if-not @collide-tiles? ball' (collide-ball point ball'))
+                state' (update state :balls conj ball'')]
+            (if-not @paint-tiles? state'
+                    (paint-tiles state' intersecting color)))))))
 
 (defn update-state-once [state]
   (reduce update-state-ball (dissoc state :balls) (:balls state)))
