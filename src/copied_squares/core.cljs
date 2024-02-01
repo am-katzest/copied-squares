@@ -1,6 +1,7 @@
 (ns copied-squares.core
   (:require [quil.core :as q :include-macros true]
             [copied-squares.simulation :refer [sizex sizey make-xy xy* ->ball update-simulation coord] :as sim]
+            [copied-squares.gui :as gui]
             [reagent.core :as r]
             [reagent.dom :as rdom]
             [quil.middleware :as m]))
@@ -40,7 +41,7 @@
     :squares (initial-squares)
     :clearlist-deltas {}
     :clearlist {}
-    :balls (into [] (for [color [18 150 70 134 230]
+    :balls (into [] (for [color [18 150 70 135 230]
                           angle [(/ Math/PI 4.05)]
                           _repetitions (range 1)]
                       (rand-position color 0.5 0.5 :angle angle)))}
@@ -196,99 +197,33 @@
     :draw draw-state
     :middleware [m/fun-mode]))
 
-(defn checkbox [[desc thing initial on off]]
-  (let [state (r/atom initial)
-        id (random-uuid)
-        [on off] (if (some? on) [on off] [true false])
-        sync-state #(reset! thing (if @state on off))]
-    (sync-state)
-    (fn [_]
-      [:div.row
-       [:div.form-check.p-1
-        [:input.toggle
-         {:id id
-          :type "checkbox"
-          :checked @state
-          :on-change (fn []
-                       (swap! state not)
-                       (sync-state))}]
-        [:label.form-check-label.pl-2 {:for id} desc]]])))
-
-(defn radio [[desc thing initial states]]
-  (let [state (r/atom initial)
-        iid (random-uuid)]
-    (fn [_]
-      [:div.row [:div
-                 desc
-                 (let [chosen @state]
-                   (for [[id [desc val]] states]
-                     ^{:key id} [:div.form-check
-                                 [:input.form-check-input
-                                  {:type "radio"
-                                   :name iid
-                                   :id (str iid id)
-                                   :value "option1"
-                                   :checked (= id chosen)
-                                   :on-change (fn []
-                                                (reset! state id)
-                                                (reset! thing val))}]
-                                 [:label.form-check-label.pl-2 {:for (str iid id)} desc]]))]])))
-
-(defn int-slider [[desc target initial [minimum maximum]]]
-  (let [state (r/atom initial)
-        check-bounds #(cond-> %
-                        minimum (max minimum)
-                        maximum (min maximum))
-        maybe-swap! #(when-let [new-state (some-> % check-bounds int)]
-                       (reset! target new-state)
-                       (reset! state new-state))]
-    (fn [_]
-      [:div.row
-       [:div.form-group.form-inline
-        [:label.pr-2 {:for "textInput"} desc]
-        [:input.form-control.px-2
-         {:id "textInput"
-          :type "text"
-          :style {:width "5em" :height "1.5em"} ;; Custom width using inline style
-          :value (str @state)
-          :on-change #(maybe-swap! (-> % .-target .-value (js/parseInt)))}]
-        [:input.form-control-range.mx-2
-         {:type "range"
-          :value @state
-          :min (str minimum)
-          :max (str maximum)
-          :step 1
-          :style {:width "100px"}
-          :on-change #(maybe-swap! (-> % .-target .-value))}]]])))
-
-(def dummy (atom nil))
 (defn controls []
   [:div.container.m-3
    [:div.container.m-2
     [:div.row [:h4 "setup"]]
-    [:button.btn.btn-primary {:type "button" :on-click run-sketch} "restart"]]
-
+    [gui/button run-sketch "restart"]]
    [:div.container.m-2
     [:div.row [:h4 "simulation"]]
-    [checkbox ["balls collide with tiles" sim/collide-tiles? true]]
-    [checkbox ["balls paint tiles" sim/paint-tiles? true]]
-    [radio ["corner collisisions:" sim/point-collision :a
+    [gui/checkbox ["balls collide with tiles" sim/collide-tiles? true]]
+    [gui/checkbox ["balls paint tiles" sim/paint-tiles? true]]
+    [gui/radio ["corner collisisions:" sim/point-collision :a
             {:a ["reflect (preserves angle)" sim/collide-point-dumb]
              :b ["fancy math thing" sim/collide-point-fancy]}]]
-    [int-slider ["steps per frame" sim/ball-steps-per-frame 1 [1 500]]]]
+    [gui/int-slider ["steps per frame" sim/ball-steps-per-frame 1 [1 500]]]]
 
    [:div.container.m-2
     [:div.row [:h4 "visibility"]]
-    [checkbox ["draw balls?" draw-balls? true]]
-    [radio ["ball shadow paintover mode" paint-over-ball-shadows :b
+    [gui/checkbox ["draw balls?" draw-balls? true]]
+    [gui/radio ["ball shadow paintover mode" paint-over-ball-shadows :b
             {:a ["overlaping squares" paint-over-with-squares]
              :b ["just ball" paint-over-with-balls]
              :c ["don't :3" identity]}]]
-    [:button.btn.btn-secondary {:type "button" :on-click #(reset! redraw-queued? true)} "redraw"]
-    [checkbox ["draw clearlists?" draw-clearlists? false]]]
+    [gui/button #(reset! redraw-queued? true) "redraw"]
+    [gui/checkbox ["draw clearlists?" draw-clearlists? false]]]
+
    [:div.container.m-2
     [:div.row [:h4 "other"]]
-    [int-slider ["frame rate" target-frame-rate 20 [1 60]]]
+    [gui/int-slider ["frame rate" target-frame-rate 20 [1 60]]]
     [:div.row "current frame rate: " @current-frame-rate]]])
 
 
