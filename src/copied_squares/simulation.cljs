@@ -42,7 +42,8 @@
         x (* speed (Math/cos angle'))
         y (* speed (Math/sin angle'))
         xy (xy. x y)]
-    (assoc ball :velocity xy)))
+    (if (or (js/isNaN x) (js/isNaN y)) ball
+        (assoc ball :velocity xy))))
 
 (def point-collision (atom nil))
 
