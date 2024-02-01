@@ -106,8 +106,7 @@
           y (range sizey)
           :let [val (get-in state [:clearlist color (coord x y)])]]
     (when (< val (/ max 2))
-      (when (zero? (rand-int 100)) (println val))
-      (draw-small-square x y [255 0 255 50] (+ (* pxsq 0.1) (* scale val)))))
+      (draw-small-square x y [255 0 255 (if (zero? val) 70 40)] (+ (* pxsq 0.1) (* scale val)))))
   (reset! redraw-queued? true); it would ovrelap
   )
 
@@ -276,7 +275,7 @@
     [radio ["corner collisisions:" dummy :a
             {:a ["reflect (preserves angle)" :todo]
              :b ["fancy math thing" :todo]}]]
-    [int-slider ["steps per frame" sim/ball-steps-per-frame 1 [1 5000]]]]
+    [int-slider ["steps per frame" sim/ball-steps-per-frame 1 [1 500]]]]
 
    [:div.container.m-2
     [:div.row [:h4 "visibility"]]
