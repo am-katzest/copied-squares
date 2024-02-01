@@ -70,3 +70,9 @@
   (q/fill 200)
   (q/rect s/stat-offset 0 s/stat-width s/stat-height)
   (draw-color-history state))
+
+(defn redraw-every-square [state]
+  (->> (* sizex sizey)
+       (range)
+       (map s/inverse-coord)
+       (draw-squares state)))

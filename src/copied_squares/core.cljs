@@ -50,35 +50,29 @@
 (def current-frame-rate (r/atom 15))
 (def every-second (atom true))
 
-(defn draw-state [state]
-  (q/frame-rate @target-frame-rate)
-  (when @every-second
-    (reset! current-frame-rate (int (q/current-frame-rate))))
-  (q/no-stroke)
+(defn- draw-squares-if-needed [state]
   (if-not @redraw-queued?
+    ;; just draw what changed
     (do
-      ;; just draw what changed
       (when @draw-balls?
         (@paint-over-ball-shadows state))
       (draw/draw-squares state (map first (:changed state))))
     ;; draw every single square again
     (do (reset! redraw-queued? false)
-        (->> (* sizex sizey)
-             (range)
-             (map state/inverse-coord)
-             (draw/draw-squares state))
-        ;; (doseq [i (range (* sizex sizey))
-        ;;         :let [xy (sim/inverse-coord i)
-        ;;               color (get-in state [:squares i])]]
-        ;;   (draw-square (.-x xy) (.-y xy) color))
-        ))
+        (draw/redraw-every-square state))))
 
+(defn draw-state [state]
+  (q/no-stroke)
+  (q/frame-rate @target-frame-rate)
+  (when @every-second
+    (draw/redraw-statistics state)
+    (reset! current-frame-rate (int (q/current-frame-rate))))
+  (draw-squares-if-needed state)
   (when @draw-clearlists?
     (draw/draw-clearlists state)
     (reset! redraw-queued? true))
   (when @draw-balls?
     (draw/paint-balls state))
-  (draw/redraw-statistics state)
   (reset! every-second false))
 
 
