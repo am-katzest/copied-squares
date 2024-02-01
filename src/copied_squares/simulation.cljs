@@ -44,7 +44,7 @@
         xy (xy. x y)]
     (assoc ball :velocity xy)))
 
-(def point-collision (atom collide-point-dumb))
+(def point-collision (atom nil))
 
 (defn collide-point [ball point]
   (if (neg? (xydot (:velocity ball) (- (:position ball) point)))
@@ -118,9 +118,9 @@
          (append-while-splitting good? (xy+ south init) south))))
   ([ball] (ball-intersecting ball false)))
 
-(def paint-tiles? (atom true))
+(def paint-tiles? (atom nil))
 
-(def collide-tiles? (atom true))
+(def collide-tiles? (atom nil))
 
 (declare update-clearlists)
 

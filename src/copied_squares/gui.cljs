@@ -23,6 +23,7 @@
 (defn radio [[desc thing initial states]]
   (let [state (r/atom initial)
         iid (random-uuid)]
+    (reset! thing (second (initial states)))
     (fn [_]
       [:div.row [:div
                  desc
@@ -48,6 +49,7 @@
         maybe-swap! #(when-let [new-state (some-> % check-bounds int)]
                        (reset! target new-state)
                        (reset! state new-state))]
+    (maybe-swap! initial)
     (fn [_]
       [:div.row
        [:div.form-group.form-inline
