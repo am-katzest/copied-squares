@@ -19,10 +19,11 @@
 ;┏━┓╺┳╸┏━┓╺┳╸╻┏━┓╺┳╸╻┏━╸┏━┓
 ;┗━┓ ┃ ┣━┫ ┃ ┃┗━┓ ┃ ┃┃  ┗━┓
 ;┗━┛ ╹ ╹ ╹ ╹ ╹┗━┛ ╹ ╹┗━╸┗━┛
-(def stat-size 100)
+(def stat-size 1000)
+(def stat-every 10)
 (def stat-px 5)
 (def stat-offset (* pxsq sizex))
-(def stat-width (* stat-size stat-px))
+(def stat-width (* stat-size stat-px (/ stat-every)))
 (def stat-height (px sizey))
 
 ;┏━┓╺┳╸┏━┓╺┳╸┏━╸┏━╸╻ ╻╻     ╻ ╻┏━╸╻  ┏━┓┏━╸┏━┓┏━┓

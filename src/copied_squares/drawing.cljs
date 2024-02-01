@@ -57,7 +57,11 @@
 
 
 (defn draw-color-history [state]
-  (doseq [[i [prev next]] (map-indexed vector (partition 2 1 (:color-history state)))
+  (doseq [[i [prev next]] (->> state
+                               :color-history
+                               (take-nth s/stat-every)
+                               (partition 2 1)
+                               (map-indexed vector))
           key (keys (into prev next))   ;unlikely, but data could be missing
           :let [prevv (get prev key 0)
                 nextv (get next key 0)
