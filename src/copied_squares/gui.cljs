@@ -104,19 +104,18 @@
 (defn ball-edit-list [state-atom]
   [:div.list-group
    (for [[i {:keys [color count radius speed]}] (map-indexed vector @state-atom)]
-     (do (println (str "1px solid " (@s/rgb-colors color)))
-         ^{:key i} [:a.list-group-item.my-1.p-0
-                    [:div.form-group.form-inline.m-0.px-0
-                     {:style {:border (str "4px solid " (@s/rgb-colors color))}}
-                     [number-input "count:" count [0 10] int #(swap! state-atom assoc-in [i :count] %)]
-                     [number-input "radius:" radius [0 10] float #(swap! state-atom assoc-in [i :radius] %)]
-                     [number-input "speed:" speed [0 10] float #(swap! state-atom assoc-in [i :speed] %)]
-                     [color-slider color #(swap! state-atom assoc-in [i :color] %)]
-                     [:button.btn
-                      {:type "button"
-                       :style {:font-size "10px"}
-                       :on-click #(swap! state-atom (fn [x] (filterv some? (assoc x i nil))))}
-                      "⌫"]]]))])
+     ^{:key i} [:a.list-group-item.my-1.p-0
+                   [:div.form-group.form-inline.m-0.px-0
+                    {:style {:border (str "4px solid " (@s/rgb-colors color))}}
+                    [number-input "count:" count [0 10] int #(swap! state-atom assoc-in [i :count] %)]
+                    [number-input "radius:" radius [0 10] float #(swap! state-atom assoc-in [i :radius] %)]
+                    [number-input "speed:" speed [0 10] float #(swap! state-atom assoc-in [i :speed] %)]
+                    [color-slider color #(swap! state-atom assoc-in [i :color] %)]
+                    [:button.btn
+                     {:type "button"
+                      :style {:font-size "10px"}
+                      :on-click #(swap! state-atom (fn [x] (filterv some? (assoc x i nil))))}
+                     "⌫"]]])])
 (defn ball-edit-gui [state-atom new-fn]
   [:div.container
    [ball-edit-list  state-atom]
