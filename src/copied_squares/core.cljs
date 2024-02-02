@@ -22,6 +22,8 @@
 
 (def gui-ball-editor-state (r/atom initial-balls))
 
+(def last-state (atom nil))
+
 (defn initial-squares-gray [_balls]
   (vec (repeat (* sizey sizex) :gray)))
 
@@ -59,16 +61,13 @@
                   (let [k (keyword (str i))]
                     [k (color->rgb k)])))))
 ;; TODO penetration chance
-(defn setup []
-  (q/color-mode :hsb)
-  (update-color-palette)
-  ;; we need to "poke" react to redraw it after we got the right colors
-  (swap! gui-ball-editor-state (comp vec reverse reverse))
-  (q/frame-rate 15)
-  (let [balls (into []
-                    (for [{:keys [color count radius speed]} @gui-ball-editor-state
-                          _count (range count)]
-                      (rand-position color speed radius)))]
+(defn generate-balls []
+  (vec (for [{:keys [color count radius speed]} @gui-ball-editor-state
+             _count (range count)]
+         (rand-position color speed radius))))
+
+(defn generate-new-state []
+  (let [balls (generate-balls)]
     (->
      {:frame 0
       :color-history []
@@ -78,6 +77,14 @@
       :balls balls}
      sim/create-clearlists
      stat/count-colors)))
+
+(defn setup []
+  (q/color-mode :hsb)
+  (update-color-palette)
+  ;; we need to "poke" react to redraw it after we got the right colors
+  (swap! gui-ball-editor-state (comp vec reverse reverse))
+  (q/frame-rate 15)
+  (or @last-state (generate-new-state)))
 
 (defn paint-over-with-squares [state]
   (doseq [ball (:old-balls state)]
@@ -116,10 +123,13 @@
   (reset! every-second false))
 
 (defn update-state [state]
-  (-> state
-      update-simulation
-      (assoc :old-squares (:squares state))
-      stat/refresh-statistics))
+  (let [state'
+        (-> state
+            update-simulation
+            (assoc :old-squares (:squares state))
+            stat/refresh-statistics)]
+    (reset! last-state state')
+    state'))
 
 (def gui-size (r/atom {:x 20 :y 20}))
 
@@ -147,7 +157,7 @@
      [gui/int-slider ["steps per frame" state/ball-steps-per-frame 1 [1 500]]]]
 
     [:div.container.m-2.col-md-3.col-lg-2
-     [:div.row [:h4 "visibility"]]
+     [:div.row [:h4 "visuals"]]
      [gui/checkbox ["draw balls?" draw-balls? true]]
      [gui/radio ["ball shadow paintover mode" paint-over-ball-shadows :b
                  {:a ["overlaping squares" paint-over-with-squares]
@@ -155,25 +165,25 @@
                   :c ["don't :3" identity]}]]
      [gui/button #(reset! redraw-queued? true) "redraw"]
      [gui/checkbox ["draw clearlists?" draw-clearlists? false]]]
+
     [:div.container.m-2.col-md-3.col-lg-2
      [:div.row [:h4 "other"]]
      [gui/int-slider ["frame rate" target-frame-rate 20 [1 60]]]
+     [gui/int-slider ["drawing scale" (fn [newpx] (state/set-px!! newpx) (run-sketch)) 20 [1 60]]]
      [:div.row "current frame rate: " @current-frame-rate]]
+
     [:div.container.m-2.col-md-12.col-lg-5
-     [:div.row [:h4 "initial conditions"] [:div.m-2 [gui/button run-sketch "restart"]]]
+     [:div.row [:h4 "initial conditions"] [:div.m-2 [gui/button (fn [] (reset! last-state nil) (run-sketch)) "restart"]]]
      [:div.row [gui/number-input "size (x):" (:x @gui-size) [0 100] int #(swap! gui-size assoc :x %)]]
      [:div.row [gui/number-input "size (y):" (:y @gui-size) [0 100] int #(swap! gui-size assoc :y %)]]
      [gui/radio ["initial square colors:" initial-squares :b
                  {:a ["closest ball" initial-squares-closest]
                   :b ["all gray" initial-squares-gray]}]]
      [gui/ball-edit-gui  gui-ball-editor-state random-ball]]]
-   ;; option for initial board
-   ;; closest ball/all gray
-   ;; would look neat with circular arrangement
+   ;; TODO circular arrangement
    ])
 
 (defn ^:export start []
   (rdom/render [controls] (js/document.getElementById "gui"))
   (js/setInterval #(reset! every-second true) 1000)
-  (run-sketch)
-  (swap! gui-ball-editor-state identity))
+  (run-sketch))

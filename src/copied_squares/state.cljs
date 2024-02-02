@@ -60,3 +60,11 @@
   (set! size (xy. sizex sizey))
   (set! stat-offset (px sizex))
   (set! stat-height (px sizey)))
+
+(defn set-px!! [newpx]
+  (set! pxsq newpx)
+  (set! stat-offset (px sizex))
+  (set! stat-height (px sizey))
+  (set! stat-offset (px sizex))
+  (set! stat-height (px sizey))
+  )

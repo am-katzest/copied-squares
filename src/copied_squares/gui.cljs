@@ -48,7 +48,9 @@
                         minimum (max minimum)
                         maximum (min maximum))
         maybe-swap! #(when-let [new-state (some-> % check-bounds int)]
-                       (reset! target new-state)
+                       (if (fn? target)
+                         (target new-state)
+                         (reset! target new-state))
                        (reset! state new-state))]
     (maybe-swap! initial)
     (fn [_]
