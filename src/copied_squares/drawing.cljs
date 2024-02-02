@@ -22,6 +22,7 @@
           (- pxsq size size) (- pxsq size size)))
 
 (defn draw-squares [state squares]
+  (q/no-stroke)
   (doseq [xy squares
           :let [x (.-x xy)
                 y (.-y xy)]]
