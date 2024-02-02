@@ -108,7 +108,7 @@
                    [:div.form-group.form-inline.m-0.px-0
                     {:style {:border (str "4px solid " (@s/rgb-colors color))}}
                     [number-input "count:" count [0 10] int #(swap! state-atom assoc-in [i :count] %)]
-                    [number-input "radius:" radius [0 10] float #(swap! state-atom assoc-in [i :radius] %)]
+                    [number-input "radius:" radius [0.1 5] float #(swap! state-atom assoc-in [i :radius] %)]
                     [number-input "speed:" speed [0 10] float #(swap! state-atom assoc-in [i :speed] %)]
                     [color-slider color #(swap! state-atom assoc-in [i :color] %)]
                     [:button.btn
