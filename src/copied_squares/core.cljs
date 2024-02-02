@@ -52,7 +52,7 @@
         angle-delta (/ q/TWO-PI cnt)]
     (vec
      (for [[i b] (map-indexed vector balls)]
-       (let [angle (* angle-delta i)
+       (let [angle (+ (if (= cnt 4) q/QUARTER-PI 0) (* angle-delta i))
              x (+ (/ sizex 2) (* (q/sin angle) (/ sizex 4)))
              y (+ (/ sizey 2) (* (q/cos angle) (/ sizey 4)))]
          (assoc b :position (make-xy x y)))))))
