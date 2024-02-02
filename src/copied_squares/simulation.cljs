@@ -1,6 +1,6 @@
 (ns copied-squares.simulation
   (:require
-   [copied-squares.state :refer [sizex sizey size delta_t coord closest-coord ball-steps-per-frame]]
+   [copied-squares.state :refer [sizex sizey size delta_t coord inverse-coord closest-coord ball-steps-per-frame]]
    [copied-squares.types :refer [xy update-xy ->xy xy+ xy* xydot xymag xy- map->ball xydist]]
    [quil.core :refer [acos atan2]]))
 
@@ -182,14 +182,22 @@
         (assoc-in [:clearlist-deltas color] deltas)
         (assoc-in [:clearlist color] clearlist))))
 
+(defn initialize-clearlists [state]
+  (->> state
+       :squares
+       (map-indexed vector)
+       (reduce (fn [state [i color]]
+                 (update-clearlists state :gray color (inverse-coord i)))
+          state)))
+
 (defn create-clearlists [state]
   (->> state
        :balls
        (map (fn [b] [(:color b) (:radius b)]))
-       ;; (filter (fn [[_ radius]] (pos? radius))) no need to keep them for points
        sort
        dedupe
-       (reduce add-clearlist state)))
+       (reduce add-clearlist state)
+       initialize-clearlists))
 
 (defn in-clearlist? [state {:keys [color position]}]
   (zero? (get-in state [:clearlist color (closest-coord position)])))
