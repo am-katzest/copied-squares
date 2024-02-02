@@ -52,7 +52,8 @@
                          (target new-state)
                          (reset! target new-state))
                        (reset! state new-state))]
-    (maybe-swap! initial)
+    (when-not (fn? target)
+      (maybe-swap! initial))
     (fn [_]
       [:div.row
        [:div.form-group.form-inline
