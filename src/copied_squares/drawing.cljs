@@ -63,7 +63,7 @@
           x (range sizex)
           y (range sizey)
           :let [age (- current (get ages (coord (xy. x y)) 0))
-                scale (* (/ 1.0 8) (min 8 (Math/log (inc age))))
+                scale (* (/ 1.0 13) (min 13 (Math/log (inc age))))
                 size (* pxsq (- 0.5 (* 0.5 scale)))]]
     (draw-small-square x y [255 0 40 (if (zero? val) 70 40)] size)))
 

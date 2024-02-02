@@ -219,9 +219,9 @@
                     (paint-tiles state' intersecting color)))))))
 
 (defn update-state-once [state]
-  (reduce update-state-ball (dissoc state :balls) (:balls state)))
+  (-> (reduce update-state-ball (dissoc state :balls) (:balls state))
+      (update :frame inc)))
 
 (defn update-simulation [state]
   (-> (iterate update-state-once (assoc state :changed [] :old-balls (:balls state)))
-      (nth @ball-steps-per-frame)
-      (update :frame inc)))
+      (nth @ball-steps-per-frame)))
