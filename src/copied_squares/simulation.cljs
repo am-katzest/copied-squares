@@ -136,14 +136,15 @@
             (recur rest))))))
 
 (defn- collide-ball [point ball]
-  (let [x (.-x point)
-        y (.-y point)]
-    (case [(int? x) (int? y)]
-      [true true]  (collide-point ball point)       ; corner
-      [false false] ball                           ; center (uh oh)
-      [true false] (collide-in-past ball :x x (if (pos? (.-x (:velocity ball))) high low)) ; vertical
-      [false true] (collide-in-past ball :y y (if (pos? (.-y (:velocity ball))) high low)) ; horizontal
-      )))
+  (if (> (rand) 0.99) ball
+    (let [x (.-x point)
+          y (.-y point)]
+      (case [(int? x) (int? y)]
+        [true true]  (collide-point ball point) ; corner
+        [false false] ball                      ; center (uh oh)
+        [true false] (collide-in-past ball :x x (if (pos? (.-x (:velocity ball))) high low)) ; vertical
+        [false true] (collide-in-past ball :y y (if (pos? (.-y (:velocity ball))) high low)) ; horizontal
+        ))))
 
 ;; program keeps "clearlists", arrays of indexes where any ball has no chance of collision
 
