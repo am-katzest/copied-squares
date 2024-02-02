@@ -136,38 +136,37 @@
 
 (defn controls []
   [:div.container.m-3
-   [:div.container.m-2
-    [:div.row [:h4 "simulation"]]
-    [gui/checkbox ["balls collide with tiles" sim/collide-tiles? true]]
-    [gui/checkbox ["balls paint tiles" sim/paint-tiles? true]]
-    [gui/radio ["corner collisisions:" sim/point-collision :b
-                {:a ["reflect (preserves angle)" sim/collide-point-dumb]
-                 :b ["fancy math thing" sim/collide-point-fancy]}]]
-    [gui/int-slider ["steps per frame" state/ball-steps-per-frame 1 [1 500]]]]
+   [:div.row
+    [:div.container.m-2.col-md-3.col-lg-2
+     [:div.row [:h4 "simulation"]]
+     [gui/checkbox ["balls collide with tiles" sim/collide-tiles? true]]
+     [gui/checkbox ["balls paint tiles" sim/paint-tiles? true]]
+     [gui/radio ["corner collisisions:" sim/point-collision :b
+                 {:a ["reflect (preserves angle)" sim/collide-point-dumb]
+                  :b ["fancy math thing" sim/collide-point-fancy]}]]
+     [gui/int-slider ["steps per frame" state/ball-steps-per-frame 1 [1 500]]]]
 
-   [:div.container.m-2
-    [:div.row [:h4 "visibility"]]
-    [gui/checkbox ["draw balls?" draw-balls? true]]
-    [gui/radio ["ball shadow paintover mode" paint-over-ball-shadows :b
-                {:a ["overlaping squares" paint-over-with-squares]
-                 :b ["just ball" draw/paint-over-with-balls]
-                 :c ["don't :3" identity]}]]
-    [gui/button #(reset! redraw-queued? true) "redraw"]
-    [gui/checkbox ["draw clearlists?" draw-clearlists? false]]]
-
-   [:div.container.m-2
-    [:div.row [:h4 "other"]]
-    [gui/int-slider ["frame rate" target-frame-rate 20 [1 60]]]
-    [:div.row "current frame rate: " @current-frame-rate]]
-   [:div.container.m-2
-    [:div.row [:h4 "setup"]]
-    [:div.row [gui/number-input "size (x):" (:x @gui-size) [0 100] int #(swap! gui-size assoc :x %)]]
-    [:div.row [gui/number-input "size (y):" (:y @gui-size) [0 100] int #(swap! gui-size assoc :y %)]]
-    [gui/radio ["initial square colors:" initial-squares :b
-                {:a ["closest ball" initial-squares-closest]
-                 :b ["all gray" initial-squares-gray]}]]
-    [gui/ball-edit-gui  gui-ball-editor-state random-ball]
-    [gui/button run-sketch "restart"]]
+    [:div.container.m-2.col-md-3.col-lg-2
+     [:div.row [:h4 "visibility"]]
+     [gui/checkbox ["draw balls?" draw-balls? true]]
+     [gui/radio ["ball shadow paintover mode" paint-over-ball-shadows :b
+                 {:a ["overlaping squares" paint-over-with-squares]
+                  :b ["just ball" draw/paint-over-with-balls]
+                  :c ["don't :3" identity]}]]
+     [gui/button #(reset! redraw-queued? true) "redraw"]
+     [gui/checkbox ["draw clearlists?" draw-clearlists? false]]]
+    [:div.container.m-2.col-md-3.col-lg-2
+     [:div.row [:h4 "other"]]
+     [gui/int-slider ["frame rate" target-frame-rate 20 [1 60]]]
+     [:div.row "current frame rate: " @current-frame-rate]]
+    [:div.container.m-2.col-md-12.col-lg-5
+     [:div.row [:h4 "initial conditions"] [:div.m-2 [gui/button run-sketch "restart"]]]
+     [:div.row [gui/number-input "size (x):" (:x @gui-size) [0 100] int #(swap! gui-size assoc :x %)]]
+     [:div.row [gui/number-input "size (y):" (:y @gui-size) [0 100] int #(swap! gui-size assoc :y %)]]
+     [gui/radio ["initial square colors:" initial-squares :b
+                 {:a ["closest ball" initial-squares-closest]
+                  :b ["all gray" initial-squares-gray]}]]
+     [gui/ball-edit-gui  gui-ball-editor-state random-ball]]]
    ;; option for initial board
    ;; closest ball/all gray
    ;; would look neat with circular arrangement
