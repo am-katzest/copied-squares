@@ -3,7 +3,7 @@
             [copied-squares.simulation :refer [update-simulation] :as sim]
             [copied-squares.gui :as gui]
             [copied-squares.drawing :as draw]
-            [copied-squares.types :refer [make-xy xy* ->ball]]
+            [copied-squares.types :refer [make-xy xy* xy+ xydist ->ball]]
             [copied-squares.statistics :as stat]
             [copied-squares.state :refer [sizex sizey] :as state]
             [reagent.core :as r]
@@ -22,8 +22,15 @@
 
 (def gui-ball-editor-state (r/atom initial-balls))
 
-(defn initial-squares []
+(defn initial-squares-gray [_balls]
   (vec (repeat (* sizey sizex) :gray)))
+
+(defn initial-squares-closest [balls]
+  (vec (for [i (range (* sizey sizex))]
+         (let [center (xy+ (state/inverse-coord i) (make-xy 0.5 0.5))]
+           (:color (apply min-key #(xydist center (:position %)) balls))))))
+
+(def initial-squares (atom initial-squares-gray))
 
 (defn rand-position [color vel size & {:keys [angle]}]
   (let [color (if (int? color) (keyword (str color)) color)
@@ -51,23 +58,26 @@
                 (for [i (range 256)]
                   (let [k (keyword (str i))]
                     [k (color->rgb k)])))))
-
+;; TODO penetration chance
 (defn setup []
   (q/color-mode :hsb)
   (update-color-palette)
+  ;; we need to "poke" react to redraw it after we got the right colors
+  (swap! gui-ball-editor-state (comp vec reverse reverse))
   (q/frame-rate 15)
-  (->
-   {:frame 0
-    :color-history []
-    :squares (initial-squares)
-    :clearlist-deltas {}
-    :clearlist {}
-    :balls (into []
-                 (for [{:keys [color count radius speed]} @gui-ball-editor-state
-                       _count (range count)]
-                   (rand-position color speed radius)))}
-   sim/create-clearlists
-   stat/count-colors))
+  (let [balls (into []
+                    (for [{:keys [color count radius speed]} @gui-ball-editor-state
+                          _count (range count)]
+                      (rand-position color speed radius)))]
+    (->
+     {:frame 0
+      :color-history []
+      :squares (@initial-squares balls)
+      :clearlist-deltas {}
+      :clearlist {}
+      :balls balls}
+     sim/create-clearlists
+     stat/count-colors)))
 
 (defn paint-over-with-squares [state]
   (doseq [ball (:old-balls state)]
@@ -111,7 +121,10 @@
       (assoc :old-squares (:squares state))
       stat/refresh-statistics))
 
+(def gui-size (r/atom {:x 20 :y 20}))
+
 (defn run-sketch []
+  (s/set-size!! @gui-size)
   (reset! redraw-queued? true)
   (q/defsketch copied-squares
     :host "copied-squares"
@@ -121,15 +134,8 @@
     :draw draw-state
     :middleware [m/fun-mode]))
 
-
 (defn controls []
   [:div.container.m-3
-   [:div.container.m-2
-    [:div.row [:h4 "setup"]]
-    [gui/button run-sketch "restart"]]
-   ;; option for initial board
-   ;; closest ball/all gray
-   ;; would look neat with circular arrangement
    [:div.container.m-2
     [:div.row [:h4 "simulation"]]
     [gui/checkbox ["balls collide with tiles" sim/collide-tiles? true]]
@@ -151,11 +157,24 @@
 
    [:div.container.m-2
     [:div.row [:h4 "other"]]
-    [gui/ball-edit-gui  gui-ball-editor-state random-ball]
     [gui/int-slider ["frame rate" target-frame-rate 20 [1 60]]]
-    [:div.row "current frame rate: " @current-frame-rate]]])
+    [:div.row "current frame rate: " @current-frame-rate]]
+   [:div.container.m-2
+    [:div.row [:h4 "setup"]]
+    [:div.row [gui/number-input "size (x):" (:x @gui-size) [0 100] int #(swap! gui-size assoc :x %)]]
+    [:div.row [gui/number-input "size (y):" (:y @gui-size) [0 100] int #(swap! gui-size assoc :y %)]]
+    [gui/radio ["initial square colors:" initial-squares :b
+                {:a ["closest ball" initial-squares-closest]
+                 :b ["all gray" initial-squares-gray]}]]
+    [gui/ball-edit-gui  gui-ball-editor-state random-ball]
+    [gui/button run-sketch "restart"]]
+   ;; option for initial board
+   ;; closest ball/all gray
+   ;; would look neat with circular arrangement
+   ])
 
 (defn ^:export start []
   (rdom/render [controls] (js/document.getElementById "gui"))
   (js/setInterval #(reset! every-second true) 1000)
-  (run-sketch))
+  (run-sketch)
+  (swap! gui-ball-editor-state identity))

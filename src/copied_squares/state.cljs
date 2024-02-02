@@ -22,7 +22,7 @@
 (def stat-size 1000)
 (def stat-every 10)
 (def stat-px 5)
-(def stat-offset (* pxsq sizex))
+(def stat-offset (px sizex))
 (def stat-width (* stat-size stat-px (/ stat-every)))
 (def stat-height (px sizey))
 
@@ -51,3 +51,12 @@
 (def rgb-colors (atom (into {}
                             (for [i (range 256)]
                               [(keyword (str i)) "#FFF"]))))
+
+;; i understand your outrage...
+;; but this function is only called when simulation isn't running
+(defn set-size!! [{:keys [x y]}]
+  (set! sizex x)
+  (set! sizey y)
+  (set! size (xy. sizex sizey))
+  (set! stat-offset (px sizex))
+  (set! stat-height (px sizey)))

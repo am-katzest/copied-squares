@@ -112,7 +112,6 @@
                      [:button.btn
                       {:type "button"
                        :style {:font-size "10px"}
-                       ;; TODO fix removing
                        :on-click #(swap! state-atom (fn [x] (filterv some? (assoc x i nil))))}
                       "⌫"]]]))])
 (defn ball-edit-gui [state-atom new-fn]
