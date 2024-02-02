@@ -11,6 +11,17 @@
             [quil.middleware :as m]
             [copied-squares.state :as s]))
 
+(def initial-balls
+  [{:color :18 :count 1 :radius 0.5 :speed 0.5}
+   {:color :70 :count 1 :radius 0.5 :speed 0.5}
+   {:color :150 :count 1 :radius 0.5 :speed 0.5}])
+
+(defn random-ball []
+  {:color (-> 256 rand-int str keyword)
+   :count 1 :radius 0.5 :speed 0.5})
+
+(def gui-ball-editor-state (r/atom initial-balls))
+
 (defn initial-squares []
   (vec (repeat (* sizey sizex) :gray)))
 
@@ -51,10 +62,10 @@
     :squares (initial-squares)
     :clearlist-deltas {}
     :clearlist {}
-    :balls (into [] (for [color [18 150 70 135 230]
-                          angle [(/ Math/PI 4.05)]
-                          _repetitions (range 1)]
-                      (rand-position color 0.5 0.5 :angle angle)))}
+    :balls (into []
+                 (for [{:keys [color count radius speed]} @gui-ball-editor-state
+                       _count (range count)]
+                   (rand-position color speed radius)))}
    sim/create-clearlists
    stat/count-colors))
 
@@ -110,6 +121,7 @@
     :draw draw-state
     :middleware [m/fun-mode]))
 
+
 (defn controls []
   [:div.container.m-3
    [:div.container.m-2
@@ -139,6 +151,7 @@
 
    [:div.container.m-2
     [:div.row [:h4 "other"]]
+    [gui/ball-edit-gui  gui-ball-editor-state random-ball]
     [gui/int-slider ["frame rate" target-frame-rate 20 [1 60]]]
     [:div.row "current frame rate: " @current-frame-rate]]])
 

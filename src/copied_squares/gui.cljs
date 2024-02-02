@@ -1,5 +1,6 @@
 (ns copied-squares.gui
-  (:require [reagent.core :as r]))
+  (:require [reagent.core :as r]
+            [copied-squares.state :as s]))
 
 
 (defn checkbox [[desc thing initial on off]]
@@ -69,5 +70,52 @@
           :style {:width "100px"}
           :on-change #(maybe-swap! (-> % .-target .-value))}]]])))
 
+
+(defn number-input [description value [minimum maximum] conversion on-call]
+  (let [check-bounds #(cond-> %
+                        minimum (max minimum)
+                        maximum (min maximum))]
+    [:div.form-group.form-inline
+     [:label.px-2 {:for "textInput"} description]
+     [:input.form-control.px-2
+      {:id "textInput"
+       :type "text"
+       :style {:width "5em" :height "1.5em"} ;; Custom width using inline style
+       :value value
+       :on-change #(some-> % .-target .-value js/parseFloat conversion check-bounds on-call)}]]))
+
+(defn color-slider [color-id on-call]
+  [:input.form-control-range.mx-2
+   {:type "range"
+    :value (name color-id)
+    :min "0"
+    :max "255"
+    :step 1
+    :style {:width "100px" :accent-color "#555"} ;styling them is hell
+    :on-change #(-> % .-target .-value keyword on-call)}
+   ])
+
 (defn button [f text]
   [:button.btn.btn-secondary {:type "button" :on-click f} text])
+
+(defn ball-edit-list [state-atom]
+  [:div.list-group
+   (for [[i {:keys [color count radius speed]}] (map-indexed vector @state-atom)]
+     (do (println (str "1px solid " (@s/rgb-colors color)))
+         ^{:key i} [:a.list-group-item.my-1.p-0
+                    [:div.form-group.form-inline.m-0.px-0
+                     {:style {:border (str "4px solid " (@s/rgb-colors color))}}
+                     [number-input "count:" count [0 10] int #(swap! state-atom assoc-in [i :count] %)]
+                     [number-input "radius:" radius [0 10] float #(swap! state-atom assoc-in [i :radius] %)]
+                     [number-input "speed:" speed [0 10] float #(swap! state-atom assoc-in [i :speed] %)]
+                     [color-slider color #(swap! state-atom assoc-in [i :color] %)]
+                     [:button.btn
+                      {:type "button"
+                       :style {:font-size "10px"}
+                       ;; TODO fix removing
+                       :on-click #(swap! state-atom (fn [x] (filterv some? (assoc x i nil))))}
+                      "⌫"]]]))])
+(defn ball-edit-gui [state-atom new-fn]
+  [:div.container
+   [ball-edit-list  state-atom]
+   [button #(swap! state-atom conj (new-fn)) "add new"]])
