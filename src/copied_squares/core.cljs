@@ -168,7 +168,7 @@
      [gui/radio ["corner collisisions:" sim/point-collision :b
                  {:a ["reflect (preserves angle)" sim/collide-point-dumb]
                   :b ["fancy math thing" sim/collide-point-fancy]}]]
-     [gui/int-slider ["steps per frame" state/ball-steps-per-frame 1 [1 500]]]]
+     [gui/int-slider ["steps per frame" state/ball-steps-per-frame 3 [1 500]]]]
 
     [:div.container.m-2.col-md-3.col-lg-2
      [:div.row [:h4 "visuals"]]
@@ -185,7 +185,7 @@
 
     [:div.container.m-2.col-md-3.col-lg-2
      [:div.row [:h4 "other"]]
-     [gui/int-slider ["frame rate" target-frame-rate 20 [1 60]]]
+     [gui/int-slider ["frame rate" target-frame-rate 30 [1 60]]]
      [gui/int-slider ["drawing scale" (fn [newpx] (state/set-px!! newpx) (run-sketch)) 20 [1 60]]]
      [:div.row "current frame rate: " @current-frame-rate]]
 

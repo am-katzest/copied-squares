@@ -6,7 +6,7 @@
 (def sizex 25)
 (def sizey 30)
 (def size  (xy. sizex sizey))
-(def delta_t 0.2)
+(def delta_t 0.4)
 (def ball-steps-per-frame (atom 1))
 
 ;╺┳┓┏━┓┏━┓╻ ╻╻┏┓╻┏━╸
