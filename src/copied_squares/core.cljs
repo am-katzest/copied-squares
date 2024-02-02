@@ -198,8 +198,15 @@
      [gui/radio ["ball placement strategy:" arrange-initial-balls :b
                  {:a ["arrange-randomly" arrange-randomly ]
                   :b ["pretty circle" arrange-circle]}]]
-     [gui/ball-edit-gui  gui-ball-editor-state random-ball]]]
-   ;; TODO circular arrangement
+     [gui/ball-edit-gui  gui-ball-editor-state random-ball]]
+
+    [:div.container.m-2.col-md-12.col-lg-12
+     [:div.row [:h4 "About"]]
+     "my implementation of "
+     [:a {:href "https://hachyderm.io/@vnglst/111828811496422610"} "this thing"]
+     ", source code available "
+     [:a {:href "https://github.com/am-katzest/copied-squares"} "here"]
+     "."]]
    ])
 
 (defn ^:export start []
