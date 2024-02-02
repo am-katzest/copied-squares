@@ -20,9 +20,17 @@
   {:color (-> 256 rand-int str keyword)
    :count 1 :radius 0.5 :speed 0.5})
 
-(def gui-ball-editor-state (r/atom initial-balls))
-
-(def last-state (atom nil))
+(def gui-size (r/atom {:x 20 :y 20}))   ; size of board (to be set on restart)
+(def gui-ball-editor-state (r/atom initial-balls)) ; description of balls to be created when restarting simulation
+(def last-state (atom nil))           ; saved state from last iteration (used to resume simulation in another quil instance)
+(def initial-squares (atom nil))         ; function used to generate inital squares
+(def paint-over-ball-shadows (atom nil)) ; function used to cover balls' tracks
+(def draw-balls? (atom true))
+(def draw-clearlists? (atom true))
+(def redraw-queued? (atom true))        ; setting this to true causes everything to be drawn again
+(def target-frame-rate (atom 15))
+(def current-frame-rate (r/atom 15))
+(def every-second (atom true))          ; is briefly set to true every second (for one quil cycle)
 
 (defn initial-squares-gray [_balls]
   (vec (repeat (* sizey sizex) :gray)))
@@ -31,8 +39,6 @@
   (vec (for [i (range (* sizey sizex))]
          (let [center (xy+ (state/inverse-coord i) (make-xy 0.5 0.5))]
            (:color (apply min-key #(xydist center (:position %)) balls))))))
-
-(def initial-squares (atom initial-squares-gray))
 
 (defn rand-position [color vel size & {:keys [angle]}]
   (let [color (if (int? color) (keyword (str color)) color)
@@ -90,14 +96,6 @@
   (doseq [ball (:old-balls state)]
     (draw/draw-squares state (sim/ball-intersecting ball))))
 
-(def paint-over-ball-shadows (atom paint-over-with-squares))
-(def draw-balls? (atom true))
-(def draw-clearlists? (atom true))
-(def redraw-queued? (atom true))
-(def target-frame-rate (atom 15))
-(def current-frame-rate (r/atom 15))
-(def every-second (atom true))
-
 (defn- draw-squares-if-needed [state]
   (if-not @redraw-queued?
     ;; just draw what changed
@@ -131,11 +129,11 @@
     (reset! last-state state')
     state'))
 
-(def gui-size (r/atom {:x 20 :y 20}))
 
 (defn run-sketch []
   (s/set-size!! @gui-size)
   (reset! redraw-queued? true)
+  (reset! every-second true)
   (q/defsketch copied-squares
     :host "copied-squares"
     :size (state/get-size)
