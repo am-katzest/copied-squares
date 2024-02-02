@@ -31,6 +31,7 @@
 (def target-frame-rate (atom 15))
 (def current-frame-rate (r/atom 15))
 (def every-second (atom true))          ; is briefly set to true every second (for one quil cycle)
+(def arrange-initial-balls (atom nil))
 
 (defn initial-squares-gray [_balls]
   (vec (repeat (* sizey sizex) :gray)))
@@ -40,12 +41,24 @@
          (let [center (xy+ (state/inverse-coord i) (make-xy 0.5 0.5))]
            (:color (apply min-key #(xydist center (:position %)) balls))))))
 
-(defn rand-position [color vel size & {:keys [angle]}]
+(defn make-ball [color vel size & {:keys [angle]}]
   (let [color (if (int? color) (keyword (str color)) color)
-        position (make-xy (rand-int sizex) (rand-int sizey))
         angle (or angle (rand (* 2.0 Math/PI)))
         velocity (xy* (make-xy (Math/sin angle) (Math/cos angle)) vel)]
-    (->ball color position velocity size)))
+    (->ball color nil velocity size)))
+
+(defn arrange-circle [balls]
+  (let [cnt (count balls)
+        angle-delta (/ q/TWO-PI cnt)]
+    (vec
+     (for [[i b] (map-indexed vector balls)]
+       (let [angle (* angle-delta i)
+             x (+ (/ sizex 2) (* (q/sin angle) (/ sizex 4)))
+             y (+ (/ sizey 2) (* (q/cos angle) (/ sizey 4)))]
+         (assoc b :position (make-xy x y)))))))
+
+(defn arrange-randomly [balls]
+  (mapv (fn [b] (assoc b :position (make-xy (rand-int sizex) (rand-int sizey)))) balls))
 
 (defn hex "converts a number (0..255) to hexadecimal" [n]
   (let [lookup "0123456789abcdef"]
@@ -66,11 +79,12 @@
                 (for [i (range 256)]
                   (let [k (keyword (str i))]
                     [k (color->rgb k)])))))
-;; TODO penetration chance
+
 (defn generate-balls []
-  (vec (for [{:keys [color count radius speed]} @gui-ball-editor-state
-             _count (range count)]
-         (rand-position color speed radius))))
+  (@arrange-initial-balls
+   (for [{:keys [color count radius speed]} @gui-ball-editor-state
+         _count (range count)]
+     (make-ball color speed radius))))
 
 (defn generate-new-state []
   (let [balls (generate-balls)]
@@ -178,9 +192,12 @@
      [:div.row [:h4 "initial conditions"] [:div.m-2 [gui/button (fn [] (reset! last-state nil) (run-sketch)) "restart"]]]
      [:div.row [gui/number-input "size (x):" (:x @gui-size) [0 100] int #(swap! gui-size assoc :x %)]]
      [:div.row [gui/number-input "size (y):" (:y @gui-size) [0 100] int #(swap! gui-size assoc :y %)]]
-     [gui/radio ["initial square colors:" initial-squares :b
+     [gui/radio ["initial square colors:" initial-squares :a
                  {:a ["closest ball" initial-squares-closest]
                   :b ["all gray" initial-squares-gray]}]]
+     [gui/radio ["ball placement strategy:" arrange-initial-balls :b
+                 {:a ["arrange-randomly" arrange-randomly ]
+                  :b ["pretty circle" arrange-circle]}]]
      [gui/ball-edit-gui  gui-ball-editor-state random-ball]]]
    ;; TODO circular arrangement
    ])
