@@ -42,9 +42,9 @@
                     [k (color->rgb k)])))))
 
 (defn setup []
+  (q/color-mode :hsb)
   (update-color-palette)
   (q/frame-rate 15)
-  (q/color-mode :hsb)
   (->
    {:frame 0
     :color-history []
