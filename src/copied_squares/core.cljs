@@ -14,7 +14,8 @@
 (def initial-balls
   [{:color :18 :count 1 :radius 0.5 :speed 0.5}
    {:color :70 :count 1 :radius 0.5 :speed 0.5}
-   {:color :150 :count 1 :radius 0.5 :speed 0.5}])
+   {:color :150 :count 1 :radius 0.5 :speed 0.5}
+   {:color :203 :count 1 :radius 0.5 :speed 0.5}])
 
 (defn random-ball []
   {:color (-> 256 rand-int str keyword)
