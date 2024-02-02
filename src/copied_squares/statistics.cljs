@@ -29,6 +29,15 @@
         drop? (>= cnt s/stat-size)]
     (subvec list' (if drop? 1 0) cnt)))
 
+(defn update-age [prev {:keys [changed frame] :as state}]
+  (reduce (fn [lst [p _ _]]
+            (assoc lst (s/coord p) frame))
+          prev (:changed state)))
+
 (defn refresh-statistics [state]
   (-> state
-      (update :color-history add-next state update-colors)))
+      (update :color-history add-next state update-colors)
+      (update :age update-age state)))
+
+(defn init-age [state]
+  (assoc state :age (vec (repeat (* s/sizex s/sizey) 0))))

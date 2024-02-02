@@ -26,7 +26,7 @@
 (def initial-squares (atom nil))         ; function used to generate inital squares
 (def paint-over-ball-shadows (atom nil)) ; function used to cover balls' tracks
 (def draw-balls? (atom true))
-(def draw-clearlists? (atom true))
+(def overlay (atom nil))
 (def redraw-queued? (atom true))        ; setting this to true causes everything to be drawn again
 (def target-frame-rate (atom 15))
 (def current-frame-rate (r/atom 15))
@@ -82,7 +82,8 @@
       :clearlist {}
       :balls balls}
      sim/create-clearlists
-     stat/count-colors)))
+     stat/count-colors
+     stat/init-age)))
 
 (defn setup []
   (q/color-mode :hsb)
@@ -113,8 +114,8 @@
     (draw/redraw-statistics state)
     (reset! current-frame-rate (int (q/current-frame-rate))))
   (draw-squares-if-needed state)
-  (when @draw-clearlists?
-    (draw/draw-clearlists state)
+  (when @overlay
+    (@overlay state)
     (reset! redraw-queued? true))
   (when @draw-balls?
     (draw/paint-balls state))
@@ -162,7 +163,10 @@
                   :b ["just ball" draw/paint-over-with-balls]
                   :c ["don't :3" identity]}]]
      [gui/button #(reset! redraw-queued? true) "redraw"]
-     [gui/checkbox ["draw clearlists?" draw-clearlists? false]]]
+     [gui/radio ["overlay" overlay :a
+                 {:a ["none" nil]
+                  :b ["clearlists" draw/draw-clearlists]
+                  :c ["age" draw/draw-age]}]]]
 
     [:div.container.m-2.col-md-3.col-lg-2
      [:div.row [:h4 "other"]]

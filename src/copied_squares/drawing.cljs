@@ -1,5 +1,6 @@
 (ns copied-squares.drawing
   (:require [quil.core :as q]
+            [copied-squares.types :refer [xy]]
             [copied-squares.state :refer [px pxsq sizex sizey coord] :as s]))
 
 (let [make-pal #(into {} (map (fn [x] [(keyword (str x)) [x %1 %2]]) (range 256)))
@@ -55,6 +56,16 @@
     (when (< val (/ max 2))
       (draw-small-square x y [255 0 255 (if (zero? val) 70 40)] (+ (* pxsq 0.1) (* scale val))))))
 
+(defn draw-age [state]
+  (q/no-stroke)
+  (doseq [:let [ages (:age state)
+                current (:frame state)]
+          x (range sizex)
+          y (range sizey)
+          :let [age (- current (get ages (coord (xy. x y)) 0))
+                scale (* (/ 1.0 8) (min 8 (Math/log (inc age))))
+                size (* pxsq (- 0.5 (* 0.5 scale)))]]
+    (draw-small-square x y [255 0 40 (if (zero? val) 70 40)] size)))
 
 
 (defn draw-color-history [state]
